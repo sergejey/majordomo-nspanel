@@ -9,7 +9,7 @@
 //
 //
 
-Define('NSPANEL_USE_DEMO_CONFIG', DIR_MODULES . 'nspanel/sample_config.inc.php');
+//Define('NSPANEL_USE_DEMO_CONFIG', DIR_MODULES . 'nspanel/sample_config.inc.php');
 
 class nspanel extends module
 {
