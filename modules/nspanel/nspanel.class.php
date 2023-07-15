@@ -187,6 +187,20 @@ class nspanel extends module
         }
     }
 
+    function getColorNum($color)
+    {
+        if (is_integer($color)) return $color;
+        $color = preg_replace('/^\#/', '', $color);
+        if ($color == 'white') $color = 'ffffff';
+        if ($color == 'red') $color = 'ff0000';
+        if ($color == 'green') $color = '00ff00';
+        if ($color == 'blue') $color = '0000ff';
+        if ($color == 'yellow') $color = 'ffff00';
+        list($r, $g, $b) = sscanf($color, "%02x%02x%02x");
+        $value = (($r >> 3) << 11) | (($g >> 2) << 5) | (($b) >> 3);
+        return $value;
+    }
+
     function renderPage($panel_path, $panel_config, $page_num = 0)
     {
         $pageConfig = $panel_config['pages'][$page_num];
@@ -214,67 +228,136 @@ class nspanel extends module
             }
             $data[] = $pageConfig['text'];
         }
-        // 2. entities
-        for ($i = 0; $i < 4; $i++) {
-            if (isset($pageConfig['entities'][$i])) {
-                $entity = $pageConfig['entities'][$i];
-                if (isset($icon_map[$entity['icon']])) {
-                    $entity['icon'] = $icon_map[$entity['icon']];
-                }
+        // therm specific
+        if ($pageConfig['type'] == 'cardThermo') {
 
-                if (isset($entity['linkedObject'])) {
-                    $linkedObject = $entity['linkedObject'];
-                    if (isset($entity['linkedProperty'])) {
-                        $linkedProperty = $entity['linkedProperty'];
+            $tempUnit = $pageConfig['tempUnit'] ?? '°C';
+
+            $data[] = $pageConfig['name']; // ?? intNameEntity
+
+            if (isset($pageConfig['currentTempLinkedObject']) && isset($pageConfig['currentTempLinkedProperty'])) {
+                $data[] = getGlobal($pageConfig['currentTempLinkedObject'] . '.' . $pageConfig['currentTempLinkedProperty']) . ' ' . $tempUnit; // current temperature label
+            } else {
+                $data[] = ''; // current temperature label
+            }
+
+
+            if (isset($pageConfig['targetTempLinkedObject']) && isset($pageConfig['targetTempLinkedProperty'])) {
+                $data[] = (float)getGlobal($pageConfig['targetTempLinkedObject'] . '.' . $pageConfig['targetTempLinkedProperty']) * 10; // target temperature
+            } else {
+                $data[] = 22 * 10; // target temperature
+            }
+
+            $data[] = $pageConfig['currentTempLabel3rd'] ? processTitle($pageConfig['currentTempLabel3rd']) : '';
+            $data[] = (float)($pageConfig['minTemp'] ?? 0) * 10; // 	Min Temp
+            $data[] = (float)($pageConfig['maxTemp'] ?? 50) * 10; // 	Max Temp
+            $data[] = (float)($pageConfig['stepTemp'] ?? 1) * 10; // 	Temperature Steps
+            // mode buttons / icons
+            for ($i = 0; $i < 8; $i++) {
+                if (isset($pageConfig['actions'][$i]) && isset($pageConfig['actions'][$i]['name'])) {
+                    $entity = $pageConfig['actions'][$i];
+                    if (isset($entity['icon'])) {
+                        $entity['icon'] = $icon_map[$entity['icon']];
                     } else {
-                        $linkedProperty = '';
+                        $entity['icon'] = $icon_map['lightbulb'];
                     }
-                    if (isset($entity['linkedMethod'])) {
-                        $linkedMethod = $entity['linkedMethod'];
+                    $data[] = $entity['icon'];
+                    if (!isset($entity['iconColorOn'])) {
+                        $entity['iconColorOn'] = 'yellow';
+                    }
+                    $data[] = $this->getColorNum($entity['iconColorOn']);
+                    if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
+                        $data[] = (int)getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']);
                     } else {
-                        $linkedMethod = '';
+                        $data[] = 0;
                     }
-                } else {
-                    $linkedObject = '';
-                    $linkedProperty = '';
-                    $linkedMethod = '';
-                }
-
-                // light~light.ceiling_lights~B~52231~Ceiling Lights~1~
-                // type, name, icon, color, title, value
-                $data[] = $entity['type'];
-                $data[] = $entity['name'];
-                $data[] = $entity['icon'];
-
-                if (!isset($entity['iconColor'])) {
-                    $entity['iconColor'] = 17299; // blue (default)
-                }
-                if (!isset($entity['iconColorOn'])) {
-                    $entity['iconColorOn'] = 65504; // yellow (default)
-                }
-
-                if ($pageConfig['type'] == 'cardGrid' && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
-                    if (getGlobal($linkedObject . '.' . $linkedProperty)) {
-                        $entity['iconColor'] = $entity['iconColorOn'];
-                    }
-                }
-
-                $data[] = $entity['iconColor'];
-                $data[] = processTitle($entity['title']);
-                if ($entity['type'] == 'switch' && $linkedObject) {
-                    $data[] = getGlobal($linkedObject . '.' . $linkedProperty);
-                } elseif ($entity['type'] == 'button') {
-                    $data[] = $entity['text'];
+                    $data[] = $entity['name']; // name
                 } else {
                     $data[] = "";
+                    $data[] = "";
+                    $data[] = "";
+                    $data[] = "";
                 }
+            }
+            $data[] = $pageConfig['currentTempLabel'] ? processTitle($pageConfig['currentTempLabel']) : ''; //Currently Label 1th Text Box
+            $data[] = $pageConfig['currentTempLabel2nd'] ? processTitle($pageConfig['currentTempLabel2nd']) : ''; //State Label 3th Text Box
+            $data[] = ''; //deprecated; ignored
+            $data[] = $tempUnit; //Temperature Unit (Celcius/Farhenheit) ['°C', '°F', 'K']
+
+            if (isset($pageConfig['targetTempLinkedObject2nd']) && isset($pageConfig['targetTempLinkedProperty2nd'])) {
+                $data[] = (float)getGlobal($pageConfig['targetTempLinkedObject2nd'] . '.' . $pageConfig['targetTempLinkedProperty2nd']) * 10;  // 2nd target temperature
             } else {
-                $data[] = "delete";
-                $data[] = "";
-                $data[] = "";
-                $data[] = "";
-                $data[] = "";
-                $data[] = "";
+                $data[] = ''; // 2nd target temperature
+            }
+
+            $data[] = 1; // additonal detail button to open another page
+        }
+        // Entities
+        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR') {
+            for ($i = 0; $i < 4; $i++) {
+                if (isset($pageConfig['entities'][$i])) {
+                    $entity = $pageConfig['entities'][$i];
+                    if (isset($icon_map[$entity['icon']])) {
+                        $entity['icon'] = $icon_map[$entity['icon']];
+                    }
+
+                    if (isset($entity['linkedObject'])) {
+                        $linkedObject = $entity['linkedObject'];
+                        if (isset($entity['linkedProperty'])) {
+                            $linkedProperty = $entity['linkedProperty'];
+                        } else {
+                            $linkedProperty = '';
+                        }
+                        if (isset($entity['linkedMethod'])) {
+                            $linkedMethod = $entity['linkedMethod'];
+                        } else {
+                            $linkedMethod = '';
+                        }
+                    } else {
+                        $linkedObject = '';
+                        $linkedProperty = '';
+                        $linkedMethod = '';
+                    }
+
+                    // light~light.ceiling_lights~B~52231~Ceiling Lights~1~
+                    // type, name, icon, color, title, value
+                    $data[] = $entity['type'];
+                    $data[] = $entity['name'];
+                    $data[] = $entity['icon'];
+
+                    if (!isset($entity['iconColor'])) {
+                        $entity['iconColor'] = 'white'; // blue (default)
+                    }
+                    $entity['iconColor'] = $this->getColorNum($entity['iconColor']);
+
+                    if (!isset($entity['iconColorOn'])) {
+                        $entity['iconColorOn'] = 'yellow'; // yellow (default)
+                    }
+                    $entity['iconColorOn'] = $this->getColorNum($entity['iconColorOn']);
+
+                    if ($pageConfig['type'] == 'cardGrid' && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
+                        if (getGlobal($linkedObject . '.' . $linkedProperty)) {
+                            $entity['iconColor'] = $entity['iconColorOn'];
+                        }
+                    }
+
+                    $data[] = $entity['iconColor'];
+                    $data[] = processTitle($entity['title']);
+                    if ($entity['type'] == 'switch' && $linkedObject) {
+                        $data[] = getGlobal($linkedObject . '.' . $linkedProperty);
+                    } elseif ($entity['type'] == 'button') {
+                        $data[] = $entity['text'];
+                    } else {
+                        $data[] = "";
+                    }
+                } else {
+                    $data[] = "delete";
+                    $data[] = "";
+                    $data[] = "";
+                    $data[] = "";
+                    $data[] = "";
+                    $data[] = "";
+                }
             }
         }
         // render
@@ -353,11 +436,14 @@ class nspanel extends module
                     }
                 }
                 if ($data[2] == 'navigate.prev' && $data[3] == 'button') {
-                    //$this->startScreensaver($panel['MQTT_PATH'], $config);
-                    if ($current_page_num > 0) {
-                        $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num - 1);
+                    if (defined('NSPANEL_USE_DEMO_CONFIG')) {
+                        $this->startScreensaver($panel['MQTT_PATH'], $config);
                     } else {
-                        $this->renderPage($panel['MQTT_PATH'], $config, count($config['pages']) - 1);
+                        if ($current_page_num > 0) {
+                            $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num - 1);
+                        } else {
+                            $this->renderPage($panel['MQTT_PATH'], $config, count($config['pages']) - 1);
+                        }
                     }
                 }
                 //event,buttonPress2,switch1,OnOff,0
@@ -376,7 +462,7 @@ class nspanel extends module
                 if ($data[1] == 'buttonPress2' && $data[3] == 'button') {
                     foreach ($page['entities'] as $entity) {
                         if ($entity['name'] == $data[2]) {
-                            if (isset($entity['linkedMethod'])) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedMethod'])) {
                                 callMethod($entity['linkedObject'] . '.' . $entity['linkedMethod']);
                             }
                             if (isset($entity['navigateTo']) && isset($pageNumbers[$entity['navigateTo']])) {
@@ -384,6 +470,36 @@ class nspanel extends module
                             }
                             $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
                         }
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'hvac_action') {
+                    $action_name = $data[4];
+                    foreach ($page['actions'] as $entity) {
+                        if ($entity['name'] == $action_name) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedMethod'])) {
+                                callMethod($entity['linkedObject'] . '.' . $entity['linkedMethod']);
+                            }
+                            if (isset($entity['navigateTo']) && isset($pageNumbers[$entity['navigateTo']])) {
+                                $current_page_num = $pageNumbers[$entity['navigateTo']];
+                                $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
+                            }
+                        }
+                    }
+                }
+
+                if ($data[1] == 'buttonPress2' && $data[3] == 'tempUpdHighLow') {
+                    $values = explode('|', $data[4]);
+                    if (isset($page['targetTempLinkedObject']) && isset($page['targetTempLinkedProperty'])) {
+                        setGlobal($page['targetTempLinkedObject'] . '.' . $page['targetTempLinkedProperty'], round(((int)$values[0]) / 10, 1));
+                    }
+                    if (isset($values[1]) && isset($page['targetTempLinkedObject2nd']) && isset($page['targetTempLinkedProperty2nd'])) {
+                        setGlobal($page['targetTempLinkedObject2nd'] . '.' . $page['targetTempLinkedProperty2nd'], round(((int)$values[1]) / 10, 1));
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'tempUpd') {
+                    $value = $data[4];
+                    if (isset($page['targetTempLinkedObject']) && isset($page['targetTempLinkedProperty'])) {
+                        setGlobal($page['targetTempLinkedObject'] . '.' . $page['targetTempLinkedProperty'], round(((int)$value) / 10, 1));
                     }
                 }
             }

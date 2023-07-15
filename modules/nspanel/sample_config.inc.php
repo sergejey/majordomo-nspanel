@@ -16,17 +16,59 @@
  */
 
 $config = array(
-    'notifications' =>array(
+    'notifications' => array(
         'minMsgLevel' => 0
     ),
     'power1' => array(
-        'linkedObject'=>'dimmer12',
+        'linkedObject' => 'dimmer12',
     ),
     'screensaver' => array(
         'timeout' => 60, // 0 to disable
         'brightness' => 10, // screensaver brightness
     ),
     'pages' => array(
+        array(
+            'name' => 'pageThermo',
+            'title' => 'Thermo page',
+            'type' => 'cardThermo',
+
+            //'tempUnit' => '°C',
+            'minTemp' => 18,
+            'maxTemp' => 35,
+            'stepTemp' => 0.5,
+
+            'currentTempLabel' => 'Inside',
+            'currentTempLabel2nd' => 'Outside',
+            'currentTempLabel3rd' => '%Sensor_temphum04.value% °C',
+
+            'currentTempLinkedObject' => 'Thermostat01',
+            'currentTempLinkedProperty' => 'value',
+
+            'targetTempLinkedObject' => 'Thermostat01',
+            'targetTempLinkedProperty' => 'normalTargetValue',
+
+            //'targetTempLinkedObject2nd' => 'Thermostat01',
+            //'targetTempLinkedProperty2nd' => 'ecoTargetValue',
+
+            'actions' => array(
+                array(
+                    'icon' => 'lightbulb',
+                    'iconColorOn' => 'green',
+                    'name' => 'mode1',
+                    'linkedObject' => 'dimmer12',
+                    'linkedProperty' => 'status',
+                    'linkedMethod' => 'switch'
+                ),
+                array(
+                    'icon' => 'lightbulb',
+                    'iconColorOn' => 'white',
+                    'name' => 'mode2',
+                    'linkedObject' => 'dimmer12',
+                    'linkedMethod' => 'switch'
+                ),
+            )
+        ),
+
         array(
             'name' => 'page1',
             'title' => 'Bedroom',
@@ -37,7 +79,7 @@ $config = array(
                     'name' => 'switch1',
                     'title' => 'Desk lamp',
                     'icon' => 'lightbulb',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                     'linkedObject' => 'dimmer12',
                     'linkedProperty' => 'status',
                 ),
@@ -46,7 +88,7 @@ $config = array(
                     'name' => 'sensor1',
                     'title' => 'Temperature: 22 C',
                     'icon' => 'thermometer',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                 ),
                 array(
                     'type' => 'button',
@@ -54,7 +96,7 @@ $config = array(
                     'title' => 'My scenario',
                     'text' => 'Run it!',
                     'icon' => 'target',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                 ),
             ),
         ),
@@ -77,7 +119,7 @@ $config = array(
                     'name' => 'sensor1',
                     'title' => 'Living room: 22 C',
                     'icon' => 'thermometer',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                 ),
                 array(
                     'type' => 'button',
@@ -85,7 +127,7 @@ $config = array(
                     'title' => 'My scenario',
                     'text' => 'Run it!',
                     'icon' => 'target',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                     'linkedObject' => 'dimmer12',
                     'linkedMethod' => 'switch',
                 ),
@@ -104,14 +146,14 @@ $config = array(
                     'name' => 'text1',
                     'title' => 'SSID: GuestWiFi',
                     'icon' => 'information-outline',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                 ),
                 array(
                     'type' => 'text',
                     'name' => 'text2',
                     'title' => 'Password: 12345',
                     'icon' => 'shield-lock-outline',
-                    'iconColor' => 17299,
+                    'iconColor' => 'blue',
                 ),
             ),
         ),
