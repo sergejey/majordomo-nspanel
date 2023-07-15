@@ -1,7 +1,4 @@
 <?php
-
-//dprint($this->getColorNum('ff0000'));
-
 /*
 * @version 0.1 (wizard)
 */

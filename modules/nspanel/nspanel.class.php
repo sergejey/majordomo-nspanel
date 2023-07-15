@@ -170,6 +170,55 @@ class nspanel extends module
         }
     }
 
+    function updateWeather($panel_path, $panel_config)
+    {
+        if (isset($panel_config['screensaver']['screenItems'])) {
+            require(DIR_MODULES . 'nspanel/icons_map.inc.php');
+            $data = array();
+            for ($i = 0; $i < 6; $i++) {
+                if (isset($panel_config['screensaver']['screenItems'][$i]) &&
+                    isset($panel_config['screensaver']['screenItems'][$i]['title']) &&
+                    $panel_config['screensaver']['screenItems'][$i]['title'] != '') {
+                    $entity = $panel_config['screensaver']['screenItems'][$i];
+                    $data[] = ''; // type, ignored
+                    $data[] = ''; // name, ignored
+                    if (!isset($entity['icon'])) {
+                        $entity['icon'] = 'home';
+                    }
+                    if (!isset($entity['iconOn'])) {
+                        $entity['iconOn'] = $entity['icon'];
+                    }
+                    if (!isset($entity['iconColor'])) {
+                        $entity['iconColor'] = 'white';
+                    }
+                    if (!isset($entity['iconColorOn'])) {
+                        $entity['iconColorOn'] = $entity['iconColor'];
+                    }
+                    if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
+                        $status = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']);
+                        if ($status) {
+                            $entity['icon'] = $entity['iconOn'];
+                            $entity['iconColor'] = $entity['iconColorOn'];
+                        }
+                    }
+
+                    $data[] = $icon_map[$entity['icon']];
+                    $data[] = $this->getColorNum($entity['iconColor']);
+                    $data[] = $entity['title'] ? processTitle($entity['title']) : '';
+                    $data[] = $entity['value'] ? processTitle($entity['value']) : '';
+                } else {
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                }
+            }
+            $this->sendCustomCommand($panel_path, 'weatherUpdate~' . implode('~', $data));
+        }
+    }
+
     function startScreensaver($panel_path, $panel_config)
     {
         $this->sendCustomCommand($panel_path, 'pageType~screensaver');
@@ -185,6 +234,8 @@ class nspanel extends module
         if (isset($panel_config['screensaver']['brightness'])) {
             $this->sendCustomCommand($panel_path, 'dimmode~' . (int)$panel_config['screensaver']['brightness'] . '~100');
         }
+
+        $this->updateWeather($panel_path, $panel_config);
     }
 
     function getColorNum($color)
@@ -216,7 +267,7 @@ class nspanel extends module
         $data = array('entityUpd');
         // 1. navigation
         // title
-        $data[] = $pageConfig['title'];
+        $data[] = processTitle($pageConfig['title']);
         // nav 1 (ignored, intNameEntity, icon, iconColor, ignored, ignored)
         $data[] = "button~navigate.prev~<~65535~~";
         // nav 2
@@ -228,6 +279,86 @@ class nspanel extends module
             }
             $data[] = $pageConfig['text'];
         }
+
+        // power specific
+        if ($pageConfig['type'] == 'cardPower') {
+            for ($i = 0; $i < 8; $i++) {
+                if (isset($pageConfig['powerItems'][$i]) &&
+                    isset($pageConfig['powerItems'][$i]['title']) &&
+                    $pageConfig['powerItems'][$i]['title'] != ''
+                ) {
+                    $entity = $pageConfig['powerItems'][$i];
+                    $data[] = ''; // type ignored
+                    $data[] = ''; // intname ignored
+                    if (!isset($entity['icon'])) {
+                        $entity['icon'] = 'home';
+                    }
+                    $data[] = $icon_map[$entity['icon']];
+                    $data[] = $this->getColorNum($entity['iconColor'] ?? 'blue');
+                    $data[] = processTitle($entity['title']);
+                    if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
+                        $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']) . (isset($entity['unit']) ? ' ' . $entity['unit'] : '');
+                    } else {
+                        $data[] = '';
+                    }
+                    $data[] = $entity['speed'] ? processTitle($entity['speed']) : '';
+                } else {
+                    $data[] = 'delete';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                    $data[] = '';
+                }
+            }
+        }
+
+        // alarm specific
+        if ($pageConfig['type'] == 'cardAlarm') {
+
+            $data[] = $pageConfig['name'];
+
+            if (isset($pageConfig['linkedObject']) && isset($pageConfig['linkedProperty'])) {
+                $alarmStatus = getGlobal($pageConfig['linkedObject'] . '.' . $pageConfig['linkedProperty']);
+            } else {
+                $alarmStatus = 0;
+            }
+
+            for ($i = 0; $i < 4; $i++) {
+                if (isset($pageConfig['armList'][$i])) {
+                    $data[] = processTitle($pageConfig['armList'][$i]['title']);
+                    $data[] = $pageConfig['armList'][$i]['actionName'];
+                } else {
+                    $data[] = '';
+                    $data[] = '';
+                }
+            }
+
+
+            if ($alarmStatus && isset($pageConfig['iconOn'])) {
+                $pageConfig['icon'] = $pageConfig['iconOn'];
+            }
+
+            if (isset($pageConfig['icon'])) {
+                $pageConfig['icon'] = $icon_map[$pageConfig['icon']];
+            } else {
+                $pageConfig['icon'] = $icon_map['security'];
+            }
+            $data[] = $pageConfig['icon'];
+
+            if ($alarmStatus && isset($pageConfig['iconColorOn'])) {
+                $pageConfig['iconColor'] = $pageConfig['iconColorOn'];
+            }
+            if (!isset($pageConfig['iconColor'])) {
+                $pageConfig['iconColor'] = 'red';
+            }
+            $data[] = $this->getColorNum($pageConfig['iconColor']);
+
+            $data[] = 'enable'; // numpad status
+            $data[] = 'disable'; // flashing
+        }
+
         // therm specific
         if ($pageConfig['type'] == 'cardThermo') {
 
@@ -345,6 +476,10 @@ class nspanel extends module
                     $data[] = processTitle($entity['title']);
                     if ($entity['type'] == 'switch' && $linkedObject) {
                         $data[] = getGlobal($linkedObject . '.' . $linkedProperty);
+                    } elseif ($entity['type'] == 'number' && $linkedObject) {
+                        $min = $entity['min'] ?? 0;
+                        $max = $entity['max'] ?? 100;
+                        $data[] = getGlobal($linkedObject . '.' . $linkedProperty) . '|' . $min . '|' . $max;
                     } elseif ($entity['type'] == 'button') {
                         $data[] = $entity['text'];
                     } else {
@@ -472,6 +607,17 @@ class nspanel extends module
                         }
                     }
                 }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'number-set') {
+                    $level = (int)$data[4];
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
+                                setGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty'], $level);
+                            }
+                        }
+                    }
+                }
+
                 if ($data[1] == 'buttonPress2' && $data[3] == 'hvac_action') {
                     $action_name = $data[4];
                     foreach ($page['actions'] as $entity) {
@@ -486,7 +632,6 @@ class nspanel extends module
                         }
                     }
                 }
-
                 if ($data[1] == 'buttonPress2' && $data[3] == 'tempUpdHighLow') {
                     $values = explode('|', $data[4]);
                     if (isset($page['targetTempLinkedObject']) && isset($page['targetTempLinkedProperty'])) {
@@ -500,6 +645,21 @@ class nspanel extends module
                     $value = $data[4];
                     if (isset($page['targetTempLinkedObject']) && isset($page['targetTempLinkedProperty'])) {
                         setGlobal($page['targetTempLinkedObject'] . '.' . $page['targetTempLinkedProperty'], round(((int)$value) / 10, 1));
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,pageAlarm,ArmAction1,1256"}
+                if ($data[1] == 'buttonPress2' && $data[2] == $page['name'] && isset($page['armList'])) {
+                    $pin = $data[4];
+                    foreach ($page['armList'] as $armAction) {
+                        if ($armAction['actionName'] == $data[3] &&
+                            isset($armAction['linkedMethod']) &&
+                            (!isset($armAction['pin']) || $armAction['pin'] == $pin)) {
+                            callMethod($page['linkedObject'] . '.' . $armAction['linkedMethod'], array('pin' => $pin));
+                            if (isset($armAction['navigateTo']) && isset($pageNumbers[$armAction['navigateTo']])) {
+                                $current_page_num = $pageNumbers[$armAction['navigateTo']];
+                            }
+                            $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
+                        }
                     }
                 }
             }
@@ -594,13 +754,34 @@ class nspanel extends module
         if ($device_id) {
             $qry .= " AND nspanels.ID=" . (int)$device_id;
         }
-        $panels = SQLSelect("SELECT ID, MQTT_PATH FROM ns_panels WHERE $qry");
+        $panels = SQLSelect("SELECT ID, MQTT_PATH, PANEL_CONFIG FROM ns_panels WHERE $qry");
         $total = count($panels);
         for ($i = 0; $i < $total; $i++) {
             // time
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . date('H:i'));
+
+            if (defined('NSPANEL_USE_DEMO_CONFIG')) {
+                require NSPANEL_USE_DEMO_CONFIG;
+            } else {
+                $config = json_decode($panels[$i]['PANEL_CONFIG'], true);
+            }
+
             // date
-            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . date('d M, Y'));
+
+            $date = date('l, d M, Y');
+            if ($config['locale'] == 'ru_RU') {
+                $weekdays = array('Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота');
+                $months = array('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря');
+                $date = $weekdays[date('w')] . ', ';
+                $date .= date('d') . ' ';
+                $date .= $months[date('m') - 1] . ', ';
+                $date .= date('Y');
+            }
+
+            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
+
+            // weather
+            $this->updateWeather($panels[$i]['MQTT_PATH'], $config);
             // remove notification
             // $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'notify~~');
         }
