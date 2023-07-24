@@ -201,11 +201,10 @@ class nspanel extends module
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
                     }
-
                     $data[] = $icon_map[$entity['icon']];
                     $data[] = $this->getColorNum($entity['iconColor']);
-                    $data[] = $entity['title'] ? processTitle($entity['title']) : '';
-                    $data[] = $entity['value'] ? processTitle($entity['value']) : '';
+                    $data[] = $entity['title'] ?? '';
+                    $data[] = $entity['value'] ?? '';
                 } else {
                     $data[] = '';
                     $data[] = '';
@@ -215,6 +214,11 @@ class nspanel extends module
                     $data[] = '';
                 }
             }
+            $total_items = count($data);
+            for ($i = 0; $i < $total_items; $i++) {
+                if ($data[$i] == '') continue;
+                $data[$i] = processTitle($data[$i]);
+            }
             $this->sendCustomCommand($panel_path, 'weatherUpdate~' . implode('~', $data));
         }
     }
@@ -222,19 +226,12 @@ class nspanel extends module
     function startScreensaver($panel_path, $panel_config)
     {
         $this->sendCustomCommand($panel_path, 'pageType~screensaver');
-        //color~background~
-        //tTime~timeAMPM~
-        //tDate~tMainText~
-        //tForecast1~//tForecast2~//tForecast3~//tForecast4~
-        //tForecast1Val~tForecast2Val~tForecast3Val~tForecast4Val~
-        //bar~tMainTextAlt2~tTimeAdd
         if (isset($panel_config['screensaver']['timeout'])) {
             $this->sendCustomCommand($panel_path, 'timeout~' . (int)$panel_config['screensaver']['timeout']);
         }
         if (isset($panel_config['screensaver']['brightness'])) {
             $this->sendCustomCommand($panel_path, 'dimmode~' . (int)$panel_config['screensaver']['brightness'] . '~100');
         }
-
         $this->updateWeather($panel_path, $panel_config);
     }
 
@@ -256,7 +253,7 @@ class nspanel extends module
     {
         $pageConfig = $panel_config['pages'][$page_num];
         SQLExec("UPDATE ns_panels SET CURRENT_PAGE='" . $pageConfig['name'] . "'");
-        DebMes("Rendering page#$page_num : " . $pageConfig['name'], 'nspanel');
+        //DebMes("Rendering page#$page_num : " . $pageConfig['name'], 'nspanel');
 
         require(DIR_MODULES . 'nspanel/icons_map.inc.php');
 
@@ -267,11 +264,23 @@ class nspanel extends module
         $data = array('entityUpd');
         // 1. navigation
         // title
-        $data[] = processTitle($pageConfig['title']);
+        $data[] = $pageConfig['title'];
         // nav 1 (ignored, intNameEntity, icon, iconColor, ignored, ignored)
-        $data[] = "button~navigate.prev~<~65535~~";
+        //$data[] = "button~navigate.prev~<~65535~~";
+        $data[] = 'button';
+        $data[] = 'navigate.prev';
+        $data[] = '<';
+        $data[] = $this->getColorNum('white');
+        $data[] = '';
+        $data[] = '';
         // nav 2
-        $data[] = "button~navigate.next~>~65535~~";
+        //$data[] = "button~navigate.next~>~65535~~";
+        $data[] = 'button';
+        $data[] = 'navigate.next';
+        $data[] = '>';
+        $data[] = $this->getColorNum('white');
+        $data[] = '';
+        $data[] = '';
         // qr specific
         if ($pageConfig['type'] == 'cardQR') {
             if (isset($pageConfig['wifiSSID']) && isset($pageConfig['wifiPassword'])) {
@@ -295,13 +304,13 @@ class nspanel extends module
                     }
                     $data[] = $icon_map[$entity['icon']];
                     $data[] = $this->getColorNum($entity['iconColor'] ?? 'blue');
-                    $data[] = processTitle($entity['title']);
+                    $data[] = $entity['title'];
                     if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
                         $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']) . (isset($entity['unit']) ? ' ' . $entity['unit'] : '');
                     } else {
                         $data[] = '';
                     }
-                    $data[] = $entity['speed'] ? processTitle($entity['speed']) : '';
+                    $data[] = $entity['speed'] ?? '';
                 } else {
                     $data[] = 'delete';
                     $data[] = '';
@@ -327,7 +336,7 @@ class nspanel extends module
 
             for ($i = 0; $i < 4; $i++) {
                 if (isset($pageConfig['armList'][$i])) {
-                    $data[] = processTitle($pageConfig['armList'][$i]['title']);
+                    $data[] = $pageConfig['armList'][$i]['title'];
                     $data[] = $pageConfig['armList'][$i]['actionName'];
                 } else {
                     $data[] = '';
@@ -379,7 +388,7 @@ class nspanel extends module
                 $data[] = 22 * 10; // target temperature
             }
 
-            $data[] = $pageConfig['currentTempLabel3rd'] ? processTitle($pageConfig['currentTempLabel3rd']) : '';
+            $data[] = $pageConfig['currentTempLabel3rd'] ?? '';
             $data[] = (float)($pageConfig['minTemp'] ?? 0) * 10; // 	Min Temp
             $data[] = (float)($pageConfig['maxTemp'] ?? 50) * 10; // 	Max Temp
             $data[] = (float)($pageConfig['stepTemp'] ?? 1) * 10; // 	Temperature Steps
@@ -410,8 +419,8 @@ class nspanel extends module
                     $data[] = "";
                 }
             }
-            $data[] = $pageConfig['currentTempLabel'] ? processTitle($pageConfig['currentTempLabel']) : ''; //Currently Label 1th Text Box
-            $data[] = $pageConfig['currentTempLabel2nd'] ? processTitle($pageConfig['currentTempLabel2nd']) : ''; //State Label 3th Text Box
+            $data[] = $pageConfig['currentTempLabel'] ?? ''; //Currently Label 1th Text Box
+            $data[] = $pageConfig['currentTempLabel2nd'] ?? ''; //State Label 3th Text Box
             $data[] = ''; //deprecated; ignored
             $data[] = $tempUnit; //Temperature Unit (Celcius/Farhenheit) ['°C', '°F', 'K']
 
@@ -449,7 +458,6 @@ class nspanel extends module
                         $linkedProperty = '';
                         $linkedMethod = '';
                     }
-
                     // light~light.ceiling_lights~B~52231~Ceiling Lights~1~
                     // type, name, icon, color, title, value
                     $data[] = $entity['type'];
@@ -473,7 +481,7 @@ class nspanel extends module
                     }
 
                     $data[] = $entity['iconColor'];
-                    $data[] = processTitle($entity['title']);
+                    $data[] = $entity['title'];
                     if ($entity['type'] == 'switch' && $linkedObject) {
                         $data[] = getGlobal($linkedObject . '.' . $linkedProperty);
                     } elseif ($entity['type'] == 'number' && $linkedObject) {
@@ -496,6 +504,11 @@ class nspanel extends module
             }
         }
         // render
+        $total_items = count($data);
+        for ($i = 0; $i < $total_items; $i++) {
+            if ($data[$i] == '') continue;
+            $data[$i] = processTitle($data[$i]);
+        }
         $result = implode('~', $data);
         $this->sendCustomCommand($panel_path, $result);
 
@@ -514,6 +527,9 @@ class nspanel extends module
             require NSPANEL_USE_DEMO_CONFIG;
         } else {
             $config = json_decode($panel['PANEL_CONFIG'], true);
+            if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
+                require DIR_MODULES . 'nspanel/' . $config['load_config'];
+            }
         }
 
 
@@ -532,12 +548,45 @@ class nspanel extends module
         }
         $page = $config['pages'][$current_page_num];
 
-        if (preg_match('/POWER1$/', $topic) && isset($config['power1'])) {
+        if (preg_match('/POWER1$/', $topic) && isset($config['power1']) && isset($config['power1']['linkedObject'])) {
+            $methodOn = 'turnOn';
+            $methodOff = 'turnOff';
+            if (isset($config['power1']['linkedMethod'])) {
+                $methodOn = $config['power1']['linkedMethod'];
+                $methodOff = $methodOn;
+            }
+            if (isset($config['power1']['linkedMethodOn'])) {
+                $methodOn = $config['power1']['linkedMethodOn'];
+            }
+            if (isset($config['power1']['linkedMethodOff'])) {
+                $methodOff = $config['power1']['linkedMethodOff'];
+            }
             if (isset($config['power1']['linkedObject']) && $msg == 'ON') {
-                callMethod($config['power1']['linkedObject'] . '.turnOn');
+                callMethod($config['power1']['linkedObject'] . '.' . $methodOn);
             }
             if (isset($config['power1']['linkedObject']) && $msg == 'OFF') {
-                callMethod($config['power1']['linkedObject'] . '.turnOff');
+                callMethod($config['power1']['linkedObject'] . '.' . $methodOff);
+            }
+        }
+
+        if (preg_match('/POWER2$/', $topic) && isset($config['power2']) && isset($config['power2']['linkedObject'])) {
+            $methodOn = 'turnOn';
+            $methodOff = 'turnOff';
+            if (isset($config['power2']['linkedMethod'])) {
+                $methodOn = $config['power2']['linkedMethod'];
+                $methodOff = $methodOn;
+            }
+            if (isset($config['power2']['linkedMethodOn'])) {
+                $methodOn = $config['power2']['linkedMethodOn'];
+            }
+            if (isset($config['power2']['linkedMethodOff'])) {
+                $methodOff = $config['power2']['linkedMethodOff'];
+            }
+            if (isset($config['power2']['linkedObject']) && $msg == 'ON') {
+                callMethod($config['power2']['linkedObject'] . '.' . $methodOn);
+            }
+            if (isset($config['power2']['linkedObject']) && $msg == 'OFF') {
+                callMethod($config['power2']['linkedObject'] . '.' . $methodOff);
             }
         }
 
@@ -764,6 +813,9 @@ class nspanel extends module
                 require NSPANEL_USE_DEMO_CONFIG;
             } else {
                 $config = json_decode($panels[$i]['PANEL_CONFIG'], true);
+                if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
+                    require DIR_MODULES . 'nspanel/' . $config['load_config'];
+                }
             }
 
             // date
@@ -783,7 +835,7 @@ class nspanel extends module
             // weather
             $this->updateWeather($panels[$i]['MQTT_PATH'], $config);
             // remove notification
-            // $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'notify~~');
+            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'notify~~');
         }
     }
 
@@ -824,6 +876,9 @@ class nspanel extends module
                     require NSPANEL_USE_DEMO_CONFIG;
                 } else {
                     $config = json_decode($panels[$i]['PANEL_CONFIG'], true);
+                    if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
+                        require DIR_MODULES . 'nspanel/' . $config['load_config'];
+                    }
                 }
 
                 $header = date('H:i');
