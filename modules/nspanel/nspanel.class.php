@@ -173,7 +173,6 @@ class nspanel extends module
     function updateWeather($panel_path, $panel_config)
     {
         if (isset($panel_config['screensaver']['screenItems'])) {
-            require(DIR_MODULES . 'nspanel/icons_map.inc.php');
             $data = array();
             for ($i = 0; $i < 6; $i++) {
                 if (isset($panel_config['screensaver']['screenItems'][$i]) &&
@@ -201,7 +200,7 @@ class nspanel extends module
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
                     }
-                    $data[] = $icon_map[$entity['icon']];
+                    $data[] = $this->getIcon($entity['icon']);
                     $data[] = $this->getColorNum($entity['iconColor']);
                     $data[] = $entity['title'] ?? '';
                     $data[] = $entity['value'] ?? '';
@@ -235,9 +234,17 @@ class nspanel extends module
         $this->updateWeather($panel_path, $panel_config);
     }
 
+    function getIcon($icon_name) {
+        require(DIR_MODULES . 'nspanel/icons_map.inc.php');
+        $icon_name = processTitle($icon_name);
+        if (isset($icon_map[$icon_name])) return $icon_map[$icon_name];
+        return $icon_map['lightbulb'];
+    }
+
     function getColorNum($color)
     {
         if (is_integer($color)) return $color;
+        $color = processTitle($color);
         $color = preg_replace('/^\#/', '', $color);
         if ($color == 'white') $color = 'ffffff';
         if ($color == 'red') $color = 'ff0000';
@@ -254,8 +261,6 @@ class nspanel extends module
         $pageConfig = $panel_config['pages'][$page_num];
         SQLExec("UPDATE ns_panels SET CURRENT_PAGE='" . $pageConfig['name'] . "'");
         //DebMes("Rendering page#$page_num : " . $pageConfig['name'], 'nspanel');
-
-        require(DIR_MODULES . 'nspanel/icons_map.inc.php');
 
         // activate page type
         $this->sendCustomCommand($panel_path, 'pageType~' . $pageConfig['type']);
@@ -302,7 +307,7 @@ class nspanel extends module
                     if (!isset($entity['icon'])) {
                         $entity['icon'] = 'home';
                     }
-                    $data[] = $icon_map[$entity['icon']];
+                    $data[] = $this->getIcon($entity['icon']);
                     $data[] = $this->getColorNum($entity['iconColor'] ?? 'blue');
                     $data[] = $entity['title'];
                     if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
@@ -350,9 +355,9 @@ class nspanel extends module
             }
 
             if (isset($pageConfig['icon'])) {
-                $pageConfig['icon'] = $icon_map[$pageConfig['icon']];
+                $pageConfig['icon'] = $this->getIcon($pageConfig['icon']);
             } else {
-                $pageConfig['icon'] = $icon_map['security'];
+                $pageConfig['icon'] = $this->getIcon('security');
             }
             $data[] = $pageConfig['icon'];
 
@@ -397,9 +402,9 @@ class nspanel extends module
                 if (isset($pageConfig['actions'][$i]) && isset($pageConfig['actions'][$i]['name'])) {
                     $entity = $pageConfig['actions'][$i];
                     if (isset($entity['icon'])) {
-                        $entity['icon'] = $icon_map[$entity['icon']];
+                        $entity['icon'] = $this->getIcon($entity['icon']);
                     } else {
-                        $entity['icon'] = $icon_map['lightbulb'];
+                        $entity['icon'] = $this->getIcon('lightbulb');
                     }
                     $data[] = $entity['icon'];
                     if (!isset($entity['iconColorOn'])) {
@@ -437,9 +442,7 @@ class nspanel extends module
             for ($i = 0; $i < 4; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
                     $entity = $pageConfig['entities'][$i];
-                    if (isset($icon_map[$entity['icon']])) {
-                        $entity['icon'] = $icon_map[$entity['icon']];
-                    }
+                    $entity['icon'] = $this->getIcon($entity['icon']);
 
                     if (isset($entity['linkedObject'])) {
                         $linkedObject = $entity['linkedObject'];
