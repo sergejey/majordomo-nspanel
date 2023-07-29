@@ -234,7 +234,8 @@ class nspanel extends module
         $this->updateWeather($panel_path, $panel_config);
     }
 
-    function getIcon($icon_name) {
+    function getIcon($icon_name)
+    {
         require(DIR_MODULES . 'nspanel/icons_map.inc.php');
         $icon_name = processTitle($icon_name);
         if (isset($icon_map[$icon_name])) return $icon_map[$icon_name];
@@ -637,10 +638,22 @@ class nspanel extends module
                 if ($data[1] == 'buttonPress2' && $data[3] == 'OnOff') {
                     foreach ($page['entities'] as $entity) {
                         if ($entity['name'] == $data[2] && $entity['linkedObject']) {
+                            $methodOn = 'turnOn';
+                            $methodOff = 'turnOff';
+                            if (isset($entity['linkedMethod'])) {
+                                $methodOn = $entity['linkedMethod'];
+                                $methodOff = $methodOn;
+                            }
+                            if (isset($entity['linkedMethodOn'])) {
+                                $methodOn = $entity['linkedMethodOn'];
+                            }
+                            if (isset($entity['linkedMethodOff'])) {
+                                $methodOff = $entity['linkedMethodOff'];
+                            }
                             if ($data[4] == "1") {
-                                callMethod($entity['linkedObject'] . '.turnOn');
+                                callMethod($entity['linkedObject'] . '.' . $methodOn);
                             } else {
-                                callMethod($entity['linkedObject'] . '.turnOff');
+                                callMethod($entity['linkedObject'] . '.' . $methodOff);
                             }
                         }
                     }
