@@ -17,57 +17,69 @@
 
 $config = array(
 
-    'locale'=>'ru_RU',
+    'locale' => 'ru_RU',
+
+    'decouple_buttons' => false, // or true -- https://docs.nspanel.pky.eu/phys-btn/
 
     'notifications' => array(
         'minMsgLevel' => 0
     ),
     'power1' => array(
         'linkedObject' => 'dimmer12',
+        'linkedProperty' => 'status', // property to control relay
+        'actionMethods' => array( // actual if decouple buttons is true
+            'SINGLE' => 'relay01.switch', // single click method
+            //'DOUBLE' => '...', //2-click
+            //'TRIPLE' => '...', //3-click
+            //'QUAD' => '...',   //4-click
+            //'PENTA' => '...',  //5-click
+            //'HOLD' => '...', //long press
+            //'CLEAR' => '...', //long press release
+        ),
     ),
     'screensaver' => array(
         'timeout' => 60, // 0 to disable
         'brightness' => 10, // screensaver brightness
         'screenItems' => array(
             array(
-                'title'=>'Icon 1',
-                'icon'=>'sun-thermometer-outline',
+                'title' => 'Icon 1',
+                'icon' => 'sun-thermometer-outline',
                 //'iconColor'=>'blue',
-                'value'=>'%Sensor_temphum04.value% °C',
+                'value' => '%Sensor_temphum04.value% °C',
             ),
             array(
-                'title'=>'Зал',
-                'icon'=>'home-thermometer',
+                'title' => 'Зал',
+                'icon' => 'home-thermometer',
                 //'iconColor'=>'blue',
-                'value'=>'%Sensor_temphum02.value%',
+                'value' => '%Sensor_temphum02.value%',
             ),
             array(
-                'title'=>'Спальня',
-                'icon'=>'home-thermometer',
+                'title' => 'Спальня',
+                'icon' => 'home-thermometer',
                 //'iconColor'=>'blue',
-                'value'=>'%Sensor_temphum01.value%',
+                'value' => '%Sensor_temphum01.value%',
             ),
             array(
-                'title'=>'Детск',
-                'icon'=>'home-thermometer',
+                'title' => 'Детск',
+                'icon' => 'home-thermometer',
                 //'iconColor'=>'blue',
-                'value'=>'%Sensor_temphum03.value%',
+                'value' => '%Sensor_temphum03.value%',
             ),
             array(
-                'title'=>'Лампа',
-                'icon'=>'lightbulb',
-                'iconOn'=>'home',
-                'iconColor'=>'blue',
-                'iconColorOn'=>'yellow',
-                'linkedObject'=>'dimmer12',
-                'linkedProperty'=>'status',
-                'value'=>'-',
+                'title' => 'Лампа',
+                'icon' => 'lightbulb',
+                'iconOn' => 'home',
+                'iconColor' => 'blue',
+                'iconColorOn' => 'yellow',
+                'linkedObject' => 'dimmer12',
+                'linkedProperty' => 'status',
+                'value' => '-',
             ),
             array(
-                'title'=>'',
-                'icon'=>'home',
-                'iconColor'=>'blue',
-                'value'=>'V6',
+                'title' => '',
+                'icon' => 'home',
+                'iconColor' => 'blue',
+                'value' => 'V6',
             ),
         ),
     ),
@@ -258,6 +270,8 @@ $config = array(
             'type' => 'cardPower',
             'name' => 'pagePower',
             'title' => 'Home Power',
+            //'backPage' => 'page1',
+            //'hidden' => true,
             'powerItems' => array(
                 array(
                     'title' => 'Home 1',

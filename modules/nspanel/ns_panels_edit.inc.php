@@ -9,10 +9,10 @@ $table_name = 'ns_panels';
 $rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
 
 if (gr('load_demo')) {
-    require DIR_MODULES.'nspanel/sample_config.inc.php';
-    $rec['PANEL_CONFIG'] = json_encode($config,JSON_PRETTY_PRINT);
-    SQLUpdate($table_name,$rec);
-    $this->redirect("?id=".$rec['ID']."&view_mode=".$this->view_mode."&tab=".$this->tab);
+    require DIR_MODULES . 'nspanel/sample_config.inc.php';
+    $rec['PANEL_CONFIG'] = json_encode($config, JSON_PRETTY_PRINT);
+    SQLUpdate($table_name, $rec);
+    $this->redirect("?id=" . $rec['ID'] . "&view_mode=" . $this->view_mode . "&tab=" . $this->tab);
 }
 
 if ($this->mode == 'update') {
@@ -36,8 +36,8 @@ if ($this->mode == 'update') {
     if ($this->tab == 'config') {
         $rec['PANEL_CONFIG'] = gr('panel_config');
         if (!is_array(json_decode($rec['PANEL_CONFIG'], true))) {
-            $ok=0;
-            $out['ERR_PANEL_CONFIG']=1;
+            $ok = 0;
+            $out['ERR_PANEL_CONFIG'] = 1;
         }
         /*
         if (!$rec['PANEL_CONFIG']) {
@@ -55,6 +55,25 @@ if ($this->mode == 'update') {
             $new_rec = 1;
             $rec['ID'] = SQLInsert($table_name, $rec); // adding new record
         }
+        $config = $this->getPanelConfig($rec['PANEL_CONFIG']);
+        if (isset($config['power1']['linkedObject']) && isset($config['power1']['linkedProperty'])) {
+            addLinkedProperty($config['power1']['linkedObject'], $config['power1']['linkedProperty'], $this->name);
+        }
+        if (isset($config['power2']['linkedObject']) && isset($config['power2']['linkedProperty'])) {
+            addLinkedProperty($config['power2']['linkedObject'], $config['power2']['linkedProperty'], $this->name);
+        }
+
+        if (isset($config['decouple_buttons'])) {
+            if ($config['decouple_buttons']) {
+                //SetOption73 1
+                $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',1);
+            } else {
+                //SetOption73 0
+                $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',0);
+            }
+        }
+
+
         $out['OK'] = 1;
     } else {
         $out['ERR'] = 1;

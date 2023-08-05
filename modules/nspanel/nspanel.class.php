@@ -259,7 +259,18 @@ class nspanel extends module
 
     function renderPage($panel_path, $panel_config, $page_num = 0)
     {
-        $pageConfig = $panel_config['pages'][$page_num];
+        $pageConfig = $panel_config['pages'][0];
+        if (is_numeric($page_num)) {
+            $pageConfig = $panel_config['pages'][$page_num];
+        } else {
+            $total_pages = count($panel_config['pages']);
+            for ($i = 0; $i < $total_pages; $i++) {
+                if ($panel_config['pages'][$i]['name'] == $page_num) {
+                    $pageConfig = $panel_config['pages'][$i];
+                }
+            }
+        }
+
         SQLExec("UPDATE ns_panels SET CURRENT_PAGE='" . $pageConfig['name'] . "'");
         //DebMes("Rendering page#$page_num : " . $pageConfig['name'], 'nspanel');
 
@@ -281,10 +292,17 @@ class nspanel extends module
         $data[] = '';
         // nav 2
         //$data[] = "button~navigate.next~>~65535~~";
-        $data[] = 'button';
-        $data[] = 'navigate.next';
-        $data[] = '>';
-        $data[] = $this->getColorNum('white');
+        if (!isset($pageConfig['hidden']) || !$pageConfig['hidden']) {
+            $data[] = 'button';
+            $data[] = 'navigate.next';
+            $data[] = '>';
+            $data[] = $this->getColorNum('white');
+        } else {
+            $data[] = '';
+            $data[] = '';
+            $data[] = '';
+            $data[] = '';
+        }
         $data[] = '';
         $data[] = '';
         // qr specific
@@ -518,24 +536,58 @@ class nspanel extends module
 
     }
 
+    function getNextPageName($config, $current_page_name)
+    {
+        $found_current = false;
+        $total = count($config['pages']);
+        for ($i = 0; $i < $total; $i++) {
+            $page = $config['pages'][$i];
+            if ($found_current && (!isset($page['hidden']) || !$page['hidden'])) {
+                return $page['name'];
+            }
+            if ($page['name'] == $current_page_name) {
+                $found_current = true;
+            }
+        }
+        return $config['pages'][0]['name'];
+    }
+
+    function getPrevPageName($config, $current_page_name)
+    {
+        $found_current = false;
+        $total = count($config['pages']);
+        $last_visible = -1;
+        for ($i = $total; $i > 0; $i--) {
+            $page = $config['pages'][$i-1];
+            if ((!isset($page['hidden']) || !$page['hidden'])) {
+                if ($found_current) {
+                    return $page['name'];
+                }
+                if (($i-1)>$last_visible) {
+                    $last_visible = $i-1;
+                }
+            }
+            if ($page['name'] == $current_page_name) {
+                if (isset($page['backPage'])) return $page['backPage'];
+                $found_current = true;
+            }
+        }
+        if ($last_visible>0) {
+            return $config['pages'][$last_visible]['name'];
+        } else {
+            return $config['pages'][0]['name'];
+        }
+
+    }
+
     function processPanelMessage($panel_id, $topic, $msg)
     {
         $panel = SQLSelectOne("SELECT * FROM ns_panels WHERE ID=" . (int)$panel_id);
         if (!isset($panel['ID'])) return;
 
-        DebMes("Processing (" . $panel['TITLE'] . ")  $topic :\n$msg", 'nspanel');
+        //DebMes("Processing (" . $panel['TITLE'] . ")  $topic :\n$msg", 'nspanel');
 
-        $config = array();
-
-        if (defined('NSPANEL_USE_DEMO_CONFIG')) {
-            require NSPANEL_USE_DEMO_CONFIG;
-        } else {
-            $config = json_decode($panel['PANEL_CONFIG'], true);
-            if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
-                require DIR_MODULES . 'nspanel/' . $config['load_config'];
-            }
-        }
-
+        $config = $this->getPanelConfig($panel['PANEL_CONFIG']);
 
         $current_page_num = 0;
         $pageNumbers = array();
@@ -565,10 +617,14 @@ class nspanel extends module
             if (isset($config['power1']['linkedMethodOff'])) {
                 $methodOff = $config['power1']['linkedMethodOff'];
             }
-            if (isset($config['power1']['linkedObject']) && $msg == 'ON') {
+            if (isset($config['power1']['linkedObject']) && $msg == 'ON' &&
+                (!isset($config['power1']['linkedProperty']) || !getGlobal($config['power1']['linkedObject'] . '.' . $config['power1']['linkedProperty']))
+            ) {
                 callMethod($config['power1']['linkedObject'] . '.' . $methodOn);
             }
-            if (isset($config['power1']['linkedObject']) && $msg == 'OFF') {
+            if (isset($config['power1']['linkedObject']) && $msg == 'OFF' &&
+                (!isset($config['power1']['linkedProperty']) || getGlobal($config['power1']['linkedObject'] . '.' . $config['power1']['linkedProperty']))
+            ) {
                 callMethod($config['power1']['linkedObject'] . '.' . $methodOff);
             }
         }
@@ -586,16 +642,32 @@ class nspanel extends module
             if (isset($config['power2']['linkedMethodOff'])) {
                 $methodOff = $config['power2']['linkedMethodOff'];
             }
-            if (isset($config['power2']['linkedObject']) && $msg == 'ON') {
+            if (isset($config['power2']['linkedObject']) && $msg == 'ON' &&
+                (!isset($config['power2']['linkedProperty']) || !getGlobal($config['power2']['linkedObject'] . '.' . $config['power2']['linkedProperty']))
+            ) {
                 callMethod($config['power2']['linkedObject'] . '.' . $methodOn);
             }
-            if (isset($config['power2']['linkedObject']) && $msg == 'OFF') {
+            if (isset($config['power2']['linkedObject']) && $msg == 'OFF' &&
+                (!isset($config['power2']['linkedProperty']) || getGlobal($config['power2']['linkedObject'] . '.' . $config['power2']['linkedProperty']))
+            ) {
                 callMethod($config['power2']['linkedObject'] . '.' . $methodOff);
             }
         }
 
         if (preg_match('/RESULT$/', $topic)) {
             $result = json_decode($msg, true);
+            if (isset($result['Button1']) && isset($result['Button1']['Action'])) {
+                $action_name = $result['Button1']['Action'];
+                if (isset($config['power1']['actionMethods'][$action_name])) {
+                    callMethod($config['power1']['actionMethods'][$action_name]);
+                }
+            }
+            if (isset($result['Button2']) && isset($result['Button2']['Action'])) {
+                $action_name = $result['Button2']['Action'];
+                if (isset($config['power2']['actionMethods'][$action_name])) {
+                    callMethod($config['power2']['actionMethods'][$action_name]);
+                }
+            }
             if (isset($result['CustomRecv'])) {
                 $data = explode(',', $result['CustomRecv']);
 
@@ -616,22 +688,15 @@ class nspanel extends module
 
                 //event,buttonPress2,navigate.next,button
                 if ($data[2] == 'navigate.next' && $data[3] == 'button') {
-                    DebMes("Current page num: " . $current_page_num, 'nspanel');
-                    if (isset($config['pages'][$current_page_num + 1])) {
-                        $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num + 1);
-                    } else {
-                        $this->renderPage($panel['MQTT_PATH'], $config);
-                    }
+                    $nextPage = $this->getNextPageName($config, $page['name']);
+                    $this->renderPage($panel['MQTT_PATH'], $config, $nextPage);
                 }
                 if ($data[2] == 'navigate.prev' && $data[3] == 'button') {
                     if (defined('NSPANEL_USE_DEMO_CONFIG')) {
                         $this->startScreensaver($panel['MQTT_PATH'], $config);
                     } else {
-                        if ($current_page_num > 0) {
-                            $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num - 1);
-                        } else {
-                            $this->renderPage($panel['MQTT_PATH'], $config, count($config['pages']) - 1);
-                        }
+                        $backPage = $this->getPrevPageName($config, $page['name']);
+                        $this->renderPage($panel['MQTT_PATH'], $config, $backPage);
                     }
                 }
                 //event,buttonPress2,switch1,OnOff,0
@@ -781,12 +846,9 @@ class nspanel extends module
         require(dirname(__FILE__) . '/ns_panels_search.inc.php');
     }
 
-    function sendCustomCommand($root_path, $command)
+    function sendMQTTCommand($topic, $command)
     {
-
-        $topic = $root_path . '/cmnd/CustomSend';
-        DebMes("Sending custom command to $topic: " . $command, 'nspanel');
-
+        //DebMes("Sending custom command to $topic: " . $command, 'nspanel');
         $this->getConfig();
         include_once(ROOT . "3rdparty/phpmqtt/phpMQTT.php");
         $client_name = "NSPanel module";
@@ -813,6 +875,29 @@ class nspanel extends module
 
     }
 
+    function sendCustomCommand($root_path, $command)
+    {
+
+        $topic = $root_path . '/cmnd/CustomSend';
+        $this->sendMQTTCommand($topic, $command);
+
+
+    }
+
+    function getPanelConfig($panel_config)
+    {
+        $config = array();
+        if (defined('NSPANEL_USE_DEMO_CONFIG')) {
+            require NSPANEL_USE_DEMO_CONFIG;
+        } else {
+            $config = json_decode($panel_config, true);
+            if (is_array($config) && isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
+                require DIR_MODULES . 'nspanel/' . $config['load_config'];
+            }
+        }
+        return $config;
+    }
+
     function sendCurrentTime($device_id = 0)
     {
         $qry = "1";
@@ -825,14 +910,7 @@ class nspanel extends module
             // time
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . date('H:i'));
 
-            if (defined('NSPANEL_USE_DEMO_CONFIG')) {
-                require NSPANEL_USE_DEMO_CONFIG;
-            } else {
-                $config = json_decode($panels[$i]['PANEL_CONFIG'], true);
-                if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
-                    require DIR_MODULES . 'nspanel/' . $config['load_config'];
-                }
-            }
+            $config = $this->getPanelConfig($panels[$i]['PANEL_CONFIG']);
 
             // date
 
@@ -887,21 +965,39 @@ class nspanel extends module
             $panels = SQLSelect("SELECT * FROM ns_panels");
             $total = count($panels);
             for ($i = 0; $i < $total; $i++) {
-
-                if (defined('NSPANEL_USE_DEMO_CONFIG')) {
-                    require NSPANEL_USE_DEMO_CONFIG;
-                } else {
-                    $config = json_decode($panels[$i]['PANEL_CONFIG'], true);
-                    if (isset($config['load_config']) && file_exists(DIR_MODULES . 'nspanel/' . $config['load_config'])) {
-                        require DIR_MODULES . 'nspanel/' . $config['load_config'];
-                    }
-                }
-
+                $config = $this->getPanelConfig($panels[$i]['PANEL_CONFIG']);
                 $header = date('H:i');
                 if ($level >= (int)$config['notifications']['minMsgLevel']) {
                     $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'notify~' . $header . '~' . $message);
                 }
             }
+        }
+    }
+
+    function propertySetHandle($object, $property, $value)
+    {
+        $found = 0;
+        $panels = SQLSelect("SELECT * FROM ns_panels");
+        $total = count($panels);
+        for ($i = 0; $i < $total; $i++) {
+            $config = $this->getPanelConfig($panels[$i]['PANEL_CONFIG']);
+            if (isset($config['power1']['linkedObject']) &&
+                strtolower($config['power1']['linkedObject']) == strtolower($object) &&
+                isset($config['power1']['linkedProperty']) &&
+                strtolower($config['power1']['linkedProperty']) == strtolower($property)) {
+                // POWER1 status change
+                $this->sendMQTTCommand($panels[$i]['MQTT_PATH'] . '/cmnd/POWER1', $value);
+            }
+            if (isset($config['power2']['linkedObject']) &&
+                strtolower($config['power2']['linkedObject']) == strtolower($object) &&
+                isset($config['power2']['linkedProperty']) &&
+                strtolower($config['power2']['linkedProperty']) == strtolower($property)) {
+                // POWER2 status change
+                $this->sendMQTTCommand($panels[$i]['MQTT_PATH'] . '/cmnd/POWER2', $value);
+            }
+        }
+        if (!$found) {
+            //removeLinkedProperty($object, $property, $this->name);
         }
     }
 
