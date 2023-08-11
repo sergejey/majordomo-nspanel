@@ -458,7 +458,12 @@ class nspanel extends module
         }
         // Entities
         if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR') {
-            for ($i = 0; $i < 4; $i++) {
+            if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardQR'){
+				$elements = 4;
+			} elseif ($pageConfig['type'] == 'cardGrid'){
+				$elements = 6;
+			}
+            for ($i = 0; $i < $elements; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
                     $entity = $pageConfig['entities'][$i];
                     $entity['icon'] = $this->getIcon($entity['icon']);
@@ -496,7 +501,7 @@ class nspanel extends module
                     }
                     $entity['iconColorOn'] = $this->getColorNum($entity['iconColorOn']);
 
-                    if ($pageConfig['type'] == 'cardGrid' && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
+                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
                         if (getGlobal($linkedObject . '.' . $linkedProperty)) {
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
@@ -504,8 +509,10 @@ class nspanel extends module
 
                     $data[] = $entity['iconColor'];
                     $data[] = $entity['title'];
-                    if ($entity['type'] == 'switch' && $linkedObject) {
-                        $data[] = getGlobal($linkedObject . '.' . $linkedProperty);
+                    if (($entity['type'] == 'switch' || $entity['type'] == 'text') && $linkedObject) {
+						$unit = "";
+						if (isset($entity['unit']))	$unit = $entity['unit'];
+                        $data[] = getGlobal($linkedObject . '.' . $linkedProperty) . $unit;
                     } elseif ($entity['type'] == 'number' && $linkedObject) {
                         $min = $entity['min'] ?? 0;
                         $max = $entity['max'] ?? 100;
