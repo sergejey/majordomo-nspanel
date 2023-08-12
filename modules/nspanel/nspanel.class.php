@@ -226,10 +226,10 @@ class nspanel extends module
     {
         $this->sendCustomCommand($panel_path, 'pageType~screensaver');
         if (isset($panel_config['screensaver']['timeout'])) {
-            $this->sendCustomCommand($panel_path, 'timeout~' . (int)$panel_config['screensaver']['timeout']);
+            $this->sendCustomCommand($panel_path, 'timeout~' . (int)processTitle($panel_config['screensaver']['timeout']));
         }
         if (isset($panel_config['screensaver']['brightness'])) {
-            $this->sendCustomCommand($panel_path, 'dimmode~' . (int)$panel_config['screensaver']['brightness'] . '~100');
+            $this->sendCustomCommand($panel_path, 'dimmode~' . (int)processTitle($panel_config['screensaver']['brightness']) . '~100');
         }
         $this->updateWeather($panel_path, $panel_config);
     }
@@ -933,8 +933,14 @@ class nspanel extends module
 
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
 
+            // update brightness
+            if (isset($config['screensaver']['brightness'])) {
+                $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'dimmode~' . (int)processTitle($config['screensaver']['brightness']) . '~100');
+            }
+
             // weather
             $this->updateWeather($panels[$i]['MQTT_PATH'], $config);
+
             // remove notification
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'notify~~');
         }
