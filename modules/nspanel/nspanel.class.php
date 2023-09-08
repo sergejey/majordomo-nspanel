@@ -305,6 +305,30 @@ class nspanel extends module
         }
         $data[] = '';
         $data[] = '';
+
+        // media specific
+        if ($pageConfig['type'] == 'cardMedia') {
+            $data[] = 0;
+            $data[] = $pageConfig['trackTitle']; // title
+            $data[] = $this->getColorNum('white'); // author color
+            $data[] = $pageConfig['trackAuthor']; // author
+            $data[] = $this->getColorNum('white'); // author color
+            if (isset($pageConfig['volumeLinkedObject']) && isset($pageConfig['volumeLinkedProperty'])) {
+                $data[] = getGlobal($pageConfig['volumeLinkedObject'] . '.' . $pageConfig['volumeLinkedProperty']);
+            } else {
+                $data[] = '100';
+            }
+            $data[] = $this->getIcon('pause'); // playpause
+
+            if (isset($pageConfig['switchLinkedMethod'])) {
+                $data[] = $this->getColorNum('white'); // onoff
+            } else {
+                $data[] = "disable"; // onoff
+            }
+
+            $data[] = "disable"; // shuffle
+        }
+
         // qr specific
         if ($pageConfig['type'] == 'cardQR') {
             if (isset($pageConfig['wifiSSID']) && isset($pageConfig['wifiPassword'])) {
@@ -426,12 +450,24 @@ class nspanel extends module
                         $entity['icon'] = $this->getIcon('lightbulb');
                     }
                     $data[] = $entity['icon'];
+                    if (!isset($entity['iconColor'])) {
+                        $entity['iconColor'] = 'white';
+                    }
                     if (!isset($entity['iconColorOn'])) {
                         $entity['iconColorOn'] = 'yellow';
                     }
-                    $data[] = $this->getColorNum($entity['iconColorOn']);
+                    $action_status = 0;
                     if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
-                        $data[] = (int)getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']);
+                        $action_status = (int)getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']);
+                        if ($action_status) {
+                            $entity['iconColor'] = $entity['iconColorOn'];
+                        }
+                    }
+
+                    $data[] = $this->getColorNum($entity['iconColor']);
+
+                    if ($action_status) {
+                        $data[] = 1;
                     } else {
                         $data[] = 0;
                     }
@@ -457,12 +493,14 @@ class nspanel extends module
             $data[] = 1; // additonal detail button to open another page
         }
         // Entities
-        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR') {
-            if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardQR'){
-				$elements = 4;
-			} elseif ($pageConfig['type'] == 'cardGrid'){
-				$elements = 6;
-			}
+        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR' || $pageConfig['type'] == 'cardMedia') {
+            if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardQR') {
+                $elements = 4;
+            } elseif ($pageConfig['type'] == 'cardMedia') {
+                $elements = 5;
+            } elseif ($pageConfig['type'] == 'cardGrid') {
+                $elements = 6;
+            }
             for ($i = 0; $i < $elements; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
                     $entity = $pageConfig['entities'][$i];
@@ -510,8 +548,8 @@ class nspanel extends module
                     $data[] = $entity['iconColor'];
                     $data[] = $entity['title'];
                     if (($entity['type'] == 'switch' || $entity['type'] == 'text') && $linkedObject) {
-						$unit = "";
-						if (isset($entity['unit']))	$unit = $entity['unit'];
+                        $unit = "";
+                        if (isset($entity['unit'])) $unit = $entity['unit'];
                         $data[] = getGlobal($linkedObject . '.' . $linkedProperty) . $unit;
                     } elseif ($entity['type'] == 'number' && $linkedObject) {
                         $min = $entity['min'] ?? 0;
@@ -565,13 +603,13 @@ class nspanel extends module
         $total = count($config['pages']);
         $last_visible = -1;
         for ($i = $total; $i > 0; $i--) {
-            $page = $config['pages'][$i-1];
+            $page = $config['pages'][$i - 1];
             if ((!isset($page['hidden']) || !$page['hidden'])) {
                 if ($found_current) {
                     return $page['name'];
                 }
-                if (($i-1)>$last_visible) {
-                    $last_visible = $i-1;
+                if (($i - 1) > $last_visible) {
+                    $last_visible = $i - 1;
                 }
             }
             if ($page['name'] == $current_page_name) {
@@ -579,7 +617,7 @@ class nspanel extends module
                 $found_current = true;
             }
         }
-        if ($last_visible>0) {
+        if ($last_visible > 0) {
             return $config['pages'][$last_visible]['name'];
         } else {
             return $config['pages'][0]['name'];
@@ -592,7 +630,9 @@ class nspanel extends module
         $panel = SQLSelectOne("SELECT * FROM ns_panels WHERE ID=" . (int)$panel_id);
         if (!isset($panel['ID'])) return;
 
-        //DebMes("Processing (" . $panel['TITLE'] . ")  $topic :\n$msg", 'nspanel');
+        if (defined('NSPANEL_USE_DEMO_CONFIG')) {
+            DebMes("Processing (" . $panel['TITLE'] . ")  $topic :\n$msg", 'nspanel');
+        }
 
         $config = $this->getPanelConfig($panel['PANEL_CONFIG']);
 
@@ -799,6 +839,37 @@ class nspanel extends module
                         }
                     }
                 }
+
+                // MEDIA
+                if ($data[1] == 'buttonPress2' && $data[3] == 'volumeSlider') {
+                    $value = $data[4];
+                    if (isset($page['volumeLinkedObject']) && isset($page['volumeLinkedProperty'])) {
+                        setGlobal($page['volumeLinkedObject'] . '.' . $page['volumeLinkedProperty'], $value);
+                    } elseif (isset($page['mediaLinkedObject']) && isset($page['volumeLinkedProperty'])) {
+                        setGlobal($page['mediaLinkedObject'] . '.' . $page['volumeLinkedProperty'], $value);
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'media-back') {
+                    if (isset($page['mediaLinkedObject']) && isset($page['backLinkedMethod'])) {
+                        callMethod($page['mediaLinkedObject'] . '.' . $page['backLinkedMethod']);
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'media-next') {
+                    if (isset($page['mediaLinkedObject']) && isset($page['nextLinkedMethod'])) {
+                        callMethod($page['mediaLinkedObject'] . '.' . $page['nextLinkedMethod']);
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'media-pause') {
+                    if (isset($page['mediaLinkedObject']) && isset($page['pauseLinkedMethod'])) {
+                        callMethod($page['mediaLinkedObject'] . '.' . $page['pauseLinkedMethod']);
+                    }
+                }
+                if ($data[1] == 'buttonPress2' && $data[3] == 'media-OnOff') {
+                    if (isset($page['mediaLinkedObject']) && isset($page['switchLinkedMethod'])) {
+                        callMethod($page['mediaLinkedObject'] . '.' . $page['switchLinkedMethod']);
+                    }
+                }
+
             }
         }
 

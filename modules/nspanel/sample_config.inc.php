@@ -86,6 +86,45 @@ $config = array(
     'pages' => array(
 
         array(
+            'type' => 'cardMedia',
+            'name' => 'pageX',
+
+            'title' => 'Media page title',
+
+            'trackTitle' => 'Track Title',
+            'trackAuthor' => 'Track Author',
+
+            'mediaLinkedObject' => 'dimmer12',
+            'pauseLinkedMethod' => 'switch',
+            'nextLinkedMethod' => 'switch',
+            'backLinkedMethod' => 'switch',
+            'switchLinkedMethod' => 'switch',
+
+            'volumeLinkedObject' => 'dimmer12',
+            'volumeLinkedProperty' => 'level',
+
+
+            'entities' => array(
+                array(
+                    'type' => 'switch',
+                    'name' => 'switch1',
+                    'title' => 'Desk lamp',
+                    'icon' => 'lightbulb',
+                    'iconColor' => 'white',
+                    'linkedObject' => 'dimmer12',
+                    'linkedProperty' => 'status',
+                ),
+                array(
+                    'type' => 'switch',
+                    'name' => 'switch2',
+                    'title' => 'Desk lamp2',
+                    'icon' => 'thermometer',
+                    'iconColor' => 'white',
+                ),
+            ),
+
+        ),
+        array(
             'type' => 'cardEntities',
             'name' => 'page1',
             'title' => 'Bedroom',
