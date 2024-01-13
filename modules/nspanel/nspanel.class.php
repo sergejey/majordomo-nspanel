@@ -174,7 +174,11 @@ class nspanel extends module
     {
         if (isset($panel_config['screensaver']['screenItems'])) {
             $data = array();
-            for ($i = 0; $i < 6; $i++) {
+            $len = 6;
+            if (isset($panel_config['screensaver']['type']))
+                if ($panel_config['screensaver']['type'] == 'screensaver2')
+                    $len = count($panel_config['screensaver']['screenItems']);
+            for ($i = 0; $i < $len; $i++) {
                 if (isset($panel_config['screensaver']['screenItems'][$i]) &&
                     isset($panel_config['screensaver']['screenItems'][$i]['title']) &&
                     $panel_config['screensaver']['screenItems'][$i]['title'] != '') {
@@ -224,7 +228,9 @@ class nspanel extends module
 
     function startScreensaver($panel_path, $panel_config)
     {
-        $this->sendCustomCommand($panel_path, 'pageType~screensaver');
+        $screensaver = "screensaver";
+        if (isset($panel_config['screensaver']['type'])) $screensaver = $panel_config['screensaver']['type'];
+        $this->sendCustomCommand($panel_path, 'pageType~'.$screensaver);
         if (isset($panel_config['screensaver']['timeout'])) {
             $this->sendCustomCommand($panel_path, 'timeout~' . (int)processTitle($panel_config['screensaver']['timeout']));
         }
@@ -493,13 +499,15 @@ class nspanel extends module
             $data[] = 1; // additonal detail button to open another page
         }
         // Entities
-        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR' || $pageConfig['type'] == 'cardMedia') {
+        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardQR' || $pageConfig['type'] == 'cardMedia') {
             if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardQR') {
                 $elements = 4;
             } elseif ($pageConfig['type'] == 'cardMedia') {
                 $elements = 5;
             } elseif ($pageConfig['type'] == 'cardGrid') {
                 $elements = 6;
+            } elseif ($pageConfig['type'] == 'cardGrid2') {
+                $elements = 8;
             }
             for ($i = 0; $i < $elements; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
@@ -539,7 +547,7 @@ class nspanel extends module
                     }
                     $entity['iconColorOn'] = $this->getColorNum($entity['iconColorOn']);
 
-                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
+                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
                         if (getGlobal($linkedObject . '.' . $linkedProperty)) {
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
