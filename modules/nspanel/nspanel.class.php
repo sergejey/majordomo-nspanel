@@ -493,13 +493,15 @@ class nspanel extends module
             $data[] = 1; // additonal detail button to open another page
         }
         // Entities
-        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardQR' || $pageConfig['type'] == 'cardMedia') {
+        if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardQR' || $pageConfig['type'] == 'cardMedia') {
             if ($pageConfig['type'] == 'cardEntities' || $pageConfig['type'] == 'cardQR') {
                 $elements = 4;
             } elseif ($pageConfig['type'] == 'cardMedia') {
                 $elements = 5;
             } elseif ($pageConfig['type'] == 'cardGrid') {
                 $elements = 6;
+            } elseif ($pageConfig['type'] == 'cardGrid2') {
+                $elements = 8;
             }
             for ($i = 0; $i < $elements; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
@@ -539,7 +541,7 @@ class nspanel extends module
                     }
                     $entity['iconColorOn'] = $this->getColorNum($entity['iconColorOn']);
 
-                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
+                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
                         if (getGlobal($linkedObject . '.' . $linkedProperty)) {
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
