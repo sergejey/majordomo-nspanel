@@ -224,7 +224,9 @@ class nspanel extends module
 
     function startScreensaver($panel_path, $panel_config)
     {
-        $this->sendCustomCommand($panel_path, 'pageType~screensaver');
+        $screensaver = "screensaver";
+        if (isset($panel_config['screensaver']['type'])) $screensaver = $panel_config['screensaver']['type'];
+        $this->sendCustomCommand($panel_path, 'pageType~'.$screensaver);
         if (isset($panel_config['screensaver']['timeout'])) {
             $this->sendCustomCommand($panel_path, 'timeout~' . (int)processTitle($panel_config['screensaver']['timeout']));
         }
