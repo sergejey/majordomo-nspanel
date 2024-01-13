@@ -174,7 +174,11 @@ class nspanel extends module
     {
         if (isset($panel_config['screensaver']['screenItems'])) {
             $data = array();
-            for ($i = 0; $i < 6; $i++) {
+            $len = 6;
+            if (isset($panel_config['screensaver']['type']))
+                if ($panel_config['screensaver']['type'] == 'screensaver2')
+                    $len = count($panel_config['screensaver']['screenItems']);
+            for ($i = 0; $i < $len; $i++) {
                 if (isset($panel_config['screensaver']['screenItems'][$i]) &&
                     isset($panel_config['screensaver']['screenItems'][$i]['title']) &&
                     $panel_config['screensaver']['screenItems'][$i]['title'] != '') {
