@@ -262,6 +262,14 @@ class nspanel extends module
         $value = (($r >> 3) << 11) | (($g >> 2) << 5) | (($b) >> 3);
         return $value;
     }
+    
+    function parseColorNum($string){
+        $numbers = explode("|", $string);
+        $hexColors = array_map(function($number) {
+            return dechex((int)$number);
+        }, $numbers);
+        return implode("", $hexColors);
+    }
 
     function renderPage($panel_path, $panel_config, $page_num = 0)
     {
@@ -555,7 +563,7 @@ class nspanel extends module
 
                     $data[] = $entity['iconColor'];
                     $data[] = $entity['title'];
-                    if (($entity['type'] == 'switch' || $entity['type'] == 'text') && $linkedObject) {
+                    if (($entity['type'] == 'switch' || $entity['type'] == 'light' || $entity['type'] == 'text') && $linkedObject) {
                         $unit = "";
                         if (isset($entity['unit'])) $unit = $entity['unit'];
                         $data[] = getGlobal($linkedObject . '.' . $linkedProperty) . $unit;
@@ -728,6 +736,15 @@ class nspanel extends module
 
                 //event,startup,51,eu
                 if ($data[1] == 'startup') {
+                    //set config
+                    $settings=[];
+                    $settings[] = 10; // dim
+                    $settings[] = 100; // normal
+                    $settings[] = ''; //background color
+                    $settings[] = ''; //font color
+                    $settings[] = '0'; //feature flag popup  1 - new popup light
+                    
+                    $this->sendCustomCommand($panel['MQTT_PATH'], 'dimmode~' . implode('~', $settings));
                     $this->startScreensaver($panel['MQTT_PATH'], $config);
                 }
 
@@ -875,6 +892,91 @@ class nspanel extends module
                 if ($data[1] == 'buttonPress2' && $data[3] == 'media-OnOff') {
                     if (isset($page['mediaLinkedObject']) && isset($page['switchLinkedMethod'])) {
                         callMethod($page['mediaLinkedObject'] . '.' . $page['switchLinkedMethod']);
+                    }
+                }
+                
+                if ($data[1] == 'buttonPress2' && $data[3] == 'bExit') {
+                    $page = $panel['CURRENT_PAGE'];
+                    $this->renderPage($panel['MQTT_PATH'], $config, $page);
+                }
+                // {"CustomRecv":"event,pageOpenDetail,popupLight,itempopup2"}
+                if ($data[1] == 'pageOpenDetail' && $data[2] == 'popupLight') {
+                    $item = $data[3];
+                    DebMes("Sending custom command to $topic: " . $item, 'nspanel');
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $item) {
+                            DebMes("Find item $item: " . $entity, 'nspanel');
+                            $data=[];
+                            $data[] = $item;
+                            $data[] = $this->getIcon('fan');
+                            $data[] = $this->getColorNum('yellow'); //color
+                            $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']); //status
+                            if (isset($entity['linkedBrightness']))// brightness or disable
+                            {
+                                $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedBrightness']); 
+                            }
+                            else
+                                $data[] = 'disable';
+                            if (isset($entity['linkedCct']))// color_temp or disable
+                            {
+                                $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedCct']); 
+                            }
+                            else
+                                $data[] = 'disable';
+                            if (isset($entity['linkedColor']))// color or disable
+                            {
+                                $data[] = $this->getColorNum(getGlobal($entity['linkedObject'] . '.' . $entity['linkedColor'])); 
+                            }
+                            else
+                                $data[] = 'disable'; 
+                            $data[] = 'Цвет'; // set t0 Color (Localization)
+                            $data[] = 'Температура'; // set t4 Temperature (Localization)
+                            $data[] = 'Яркость'; // set t1 Brightness (Localization)
+                            
+                            $total_items = count($data);
+                            for ($i = 0; $i < $total_items; $i++) {
+                                if ($data[$i] == '') continue;
+                                $data[$i] = processTitle($data[$i]);
+                            }
+                            $this->sendCustomCommand($panel['MQTT_PATH'], 'entityUpdateDetail~' . implode('~', $data));
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,brightnessSlider,73"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'brightnessSlider') {
+                    $level = (int)$data[4];
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedBrightness'])) {
+                                setGlobal($entity['linkedObject'] . '.' . $entity['linkedBrightness'], $level);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,colorWheel,37|123|160"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'colorWheel') {
+                    $color = "#" . $this->parseColorNum($data[4]);
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedColor'])) {
+                                setGlobal($entity['linkedObject'] . '.' . $entity['linkedColor'], $color);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,colorTempSlider,7"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'colorTempSlider') {
+                    $cct = (int)$data[4];
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedCct'])) {
+                                setGlobal($entity['linkedObject'] . '.' . $entity['linkedCct'], $cct);
+                            }
+                            break;
+                        }
                     }
                 }
 
