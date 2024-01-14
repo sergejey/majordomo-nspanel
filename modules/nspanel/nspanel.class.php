@@ -902,14 +902,12 @@ class nspanel extends module
                 // {"CustomRecv":"event,pageOpenDetail,popupLight,itempopup2"}
                 if ($data[1] == 'pageOpenDetail' && $data[2] == 'popupLight') {
                     $item = $data[3];
-                    DebMes("Sending custom command to $topic: " . $item, 'nspanel');
                     foreach ($page['entities'] as $entity) {
                         if ($entity['name'] == $item) {
-                            DebMes("Find item $item: " . $entity, 'nspanel');
                             $data=[];
                             $data[] = $item;
-                            $data[] = $this->getIcon('fan');
-                            $data[] = $this->getColorNum('yellow'); //color
+                            $data[] = $this->getIcon($entity['icon']);
+                            $data[] = $this->getColorNum($entity['iconColor']); //color
                             $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']); //status
                             if (isset($entity['linkedBrightness']))// brightness or disable
                             {
