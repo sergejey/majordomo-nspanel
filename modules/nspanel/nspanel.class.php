@@ -1166,6 +1166,19 @@ class nspanel extends module
         }
         return $config;
     }
+    
+    function formatNowWithLocale($format, $locale) {
+        // Установка локали
+        setlocale(LC_TIME, $locale.'.UTF-8');
+
+        // Форматирование даты
+        $formattedDate = strftime($format);
+
+        // Сброс локали на дефолтную, чтобы не влиять на другие части приложения
+        setlocale(LC_TIME, '');
+
+    return $formattedDate;
+}
 
     function sendCurrentTime($device_id = 0)
     {
@@ -1177,7 +1190,10 @@ class nspanel extends module
         $total = count($panels);
         for ($i = 0; $i < $total; $i++) {
             // time
-            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . date('H:i'));
+            $time = date('H:i');
+            if ($config['format_time'])
+                $time = $this->formatNowWithLocale($config['format_time'],$config['locale']);
+            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . $time);
 
             $config = $this->getPanelConfig($panels[$i]['PANEL_CONFIG']);
 
@@ -1193,6 +1209,9 @@ class nspanel extends module
                 $date .= date('Y');
             }
 
+            if ($config['format_date'])
+                $date = $this->formatNowWithLocale($config['format_date'],$config['locale']);
+            
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
 
             // update brightness
