@@ -977,7 +977,90 @@ class nspanel extends module
                         }
                     }
                 }
-
+                //{"CustomRecv":"event,pageOpenDetail,popupShutter,item3"}
+                if ($data[1] == 'pageOpenDetail' && $data[2] == 'popupShutter') {
+                    $item = $data[3];
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $item) {
+                            $data=[];
+                            $data[] = $item;
+                            if (isset($entity['linkedProperty']))// Position value or disable
+                            {
+                                $data[] = getGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty']); 
+                            }
+                            else
+                                $data[] = 'disable';
+                            
+                            
+                            $data[] = ''; // set tinfo1 text
+                            $data[] = 'Position'; // set tPosHeading (localization)
+                            $data[] = $this->getIcon($entity['icon']); // set tIcon1
+                            $data[] = ""; // icon bUp
+                            $data[] = ""; // icon bStop
+                            $data[] = ""; // icon bDown
+                            $data[] = ""; // set icon up enable disable
+                            $data[] = ""; // set icon stop enable disable
+                            $data[] = ""; // set icon down enable disable
+                            $data[] = ''; // set tTiltHeading (localization)
+                            $data[] = ""; // icon bTUp
+                            $data[] = ""; // icon bTStop
+                            $data[] = ""; // icon bTDown
+                            $data[] = ""; // set icon Tup enable disable
+                            $data[] = ""; // set icon Tstop enable disable
+                            $data[] = ""; // set icon Tdown enable disable
+                            $data[] = "disable"; // tilt slider
+                                                       
+                            
+                            $this->sendCustomCommand($panel['MQTT_PATH'], 'entityUpdateDetail~' . implode('~', $data));
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,up"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'up') {
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedMethodUp'])) {
+                                callMethod($entity['linkedObject'] . '.' . $entity['linkedMethodUp']);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,down"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'down') {
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedMethodDown'])) {
+                                callMethod($entity['linkedObject'] . '.' . $entity['linkedMethodDown']);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,itempopup2,stop"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'stop') {
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedMethodStop'])) {
+                                callMethod($entity['linkedObject'] . '.' . $entity['linkedMethodStop']);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //{"CustomRecv":"event,buttonPress2,item3,positionSlider,52"}
+                if ($data[1] == 'buttonPress2' && $data[3] == 'positionSlider') {
+                    $pos = (int)$data[4];
+                    foreach ($page['entities'] as $entity) {
+                        if ($entity['name'] == $data[2]) {
+                            if (isset($entity['linkedObject']) && isset($entity['linkedProperty'])) {
+                                setGlobal($entity['linkedObject'] . '.' . $entity['linkedProperty'], $pos);
+                            }
+                            break;
+                        }
+                    }
+                }
             }
         }
 
