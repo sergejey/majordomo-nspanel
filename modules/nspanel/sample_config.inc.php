@@ -20,6 +20,9 @@ $config = array(
     'locale' => 'ru_RU',
 
     'decouple_buttons' => false, // or true -- https://docs.nspanel.pky.eu/phys-btn/
+    
+    "format_time" => "%H:%M",
+    "format_date" => "%a, %d %B %Y",
 
     'notifications' => array(
         'minMsgLevel' => 0
@@ -40,6 +43,7 @@ $config = array(
     'screensaver' => array(
         'timeout' => 60, // 0 to disable
         'brightness' => 10, // screensaver brightness
+        'type' => "screensaver2", // screensaver, screensaver2
         'screenItems' => array(
             array(
                 'title' => 'Icon 1',
@@ -200,6 +204,108 @@ $config = array(
                 ),
             ),
         ),
+        
+        array(
+            'type' => 'cardGrid2',
+            'name' => 'page3',
+            'title' => 'Hall',
+            'entities' => array(
+                array(
+                    'type' => 'switch',
+                    'name' => 'switch2',
+                    'title' => 'Main light',
+                    'icon' => 'lightbulb',
+                    'linkedObject' => 'dimmer12',
+                    'linkedProperty' => 'status',
+                    'navigateTo' => 'page1',
+                ),
+                array(
+                    'type' => 'text',
+                    'name' => 'sensor1',
+                    'title' => 'Living room: 22 C',
+                    'icon' => 'thermometer',
+                    'iconColor' => 'blue',
+                ),
+                array(
+                    'type' => 'text',
+                    'name' => 'sensor2',
+                    'title' => 'Living room: 22 C',
+                    'icon' => 'thermometer',
+                    'iconColor' => 'blue',
+                ),
+                array(
+                    'type' => 'text',
+                    'name' => 'sensor3',
+                    'title' => 'Kids: 24 C',
+                    'icon' => 'thermometer',
+                    'iconColor' => 'blue',
+                ),
+                array(
+                    'type' => 'text',
+                    'name' => 'sensor4',
+                    'title' => 'Hall: 21 C',
+                    'icon' => 'thermometer',
+                    'iconColor' => 'blue',
+                ),
+                array(
+                    'type' => 'button',
+                    'name' => 'button1',
+                    'title' => 'My scenario',
+                    'text' => 'Run it!',
+                    'icon' => 'target',
+                    'iconColor' => 'blue',
+                    'linkedObject' => 'dimmer12',
+                    'linkedMethod' => 'switch',
+                ),
+            ),
+        ),
+        
+        array(
+            'type' => 'cardEntities',
+            'name' => 'page4',
+            'title' => 'Room',
+            'entities' => array(
+                array(
+                    "type" => "light",
+                    "name" => "switch1",
+                    "title" => "Подсветка",
+                    "icon" => "lightbulb-outline",
+                    "iconColor" => "#757575",
+                    "linkedObject" => "Dimmer01",
+                    "linkedProperty" => "status",
+                    "linkedMethod" => "switch",
+                    "linkedBrightness" => "level",
+                    "linkedCct" => "cct",
+                    "iconColorOn" => "#FFF59D",
+                    "iconOn" => "lightbulb"
+                ),
+                array(
+                    "type" => "light",
+                    "name" => "switch1",
+                    "title" => "Подсветка RGB",
+                    "icon" => "lightbulb-outline",
+                    "iconColor" => "#757575",
+                    "linkedObject" => "Rgb01",
+                    "linkedProperty" => "status",
+                    "linkedMethod" => "switch",
+                    "linkedBrightness" => "level",
+                    "linkedColor" => "color",
+                    "iconColorOn" => "#FFF59D",
+                    "iconOn" => "lightbulb"
+                ),
+                array(
+                    "name" => "item4",
+                    "title" => "Шторы",
+                    "type" => "shutter",
+                    "linkedProperty" => "level",
+                    "linkedMethodUp" => "open",
+                    "linkedMethodDown" => "close",
+                    "linkedObject" => "Openable01",
+                    "icon" => "curtains",
+                    "iconOn" => "curtains-closed"
+                ),
+            ),
+        ),
 
         array(
             'type' => 'cardThermo',
@@ -283,7 +389,7 @@ $config = array(
 
         array(
             'type' => 'cardQR',
-            'name' => 'page3',
+            'name' => 'page_qr',
             'title' => 'Guest Wi-Fi',
             'text' => 'QREncoded text',
             'wifiSSID' => 'GuestWiFi',
