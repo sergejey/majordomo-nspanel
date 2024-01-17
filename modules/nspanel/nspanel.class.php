@@ -290,7 +290,12 @@ class nspanel extends module
 
         // activate page type
         $this->sendCustomCommand($panel_path, 'pageType~' . $pageConfig['type']);
-
+        
+        $this->updatePage($panel_path,$pageConfig);
+    }
+    
+    function updatePage($panel_path,$pageConfig)
+    {
         // build page
         $data = array('entityUpd');
         // 1. navigation
@@ -520,8 +525,7 @@ class nspanel extends module
             for ($i = 0; $i < $elements; $i++) {
                 if (isset($pageConfig['entities'][$i])) {
                     $entity = $pageConfig['entities'][$i];
-                    $entity['icon'] = $this->getIcon($entity['icon']);
-
+                    
                     if (isset($entity['linkedObject'])) {
                         $linkedObject = $entity['linkedObject'];
                         if (isset($entity['linkedProperty'])) {
@@ -543,25 +547,30 @@ class nspanel extends module
                     // type, name, icon, color, title, value
                     $data[] = $entity['type'];
                     $data[] = $entity['name'];
-                    $data[] = $entity['icon'];
+                    
 
+                    if (!isset($entity['iconOn'])) {
+                        $entity['iconOn'] = $entity['icon'];
+                    }
+                    
                     if (!isset($entity['iconColor'])) {
                         $entity['iconColor'] = 'white'; // blue (default)
                     }
-                    $entity['iconColor'] = $this->getColorNum($entity['iconColor']);
-
+                    
                     if (!isset($entity['iconColorOn'])) {
                         $entity['iconColorOn'] = 'yellow'; // yellow (default)
                     }
-                    $entity['iconColorOn'] = $this->getColorNum($entity['iconColorOn']);
-
-                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardEntities') && $entity['type'] == 'switch' && $linkedObject && $linkedProperty) {
+                    
+                    if (($pageConfig['type'] == 'cardGrid' || $pageConfig['type'] == 'cardGrid2' || $pageConfig['type'] == 'cardEntities') 
+            && ($entity['type'] == 'switch' || $entity['type'] == 'light') && $linkedObject && $linkedProperty) {
                         if (getGlobal($linkedObject . '.' . $linkedProperty)) {
+                            $entity['icon'] = $entity['iconOn'];
                             $entity['iconColor'] = $entity['iconColorOn'];
                         }
                     }
 
-                    $data[] = $entity['iconColor'];
+                    $data[] = $this->getIcon($entity['icon']);
+                    $data[] = $this->getColorNum($entity['iconColor']);
                     $data[] = $entity['title'];
                     if (($entity['type'] == 'switch' || $entity['type'] == 'light' || $entity['type'] == 'text') && $linkedObject) {
                         $unit = "";
@@ -746,22 +755,26 @@ class nspanel extends module
                     
                     $this->sendCustomCommand($panel['MQTT_PATH'], 'dimmode~' . implode('~', $settings));
                     $this->startScreensaver($panel['MQTT_PATH'], $config);
+                    return;
                 }
 
                 //event,buttonPress2,screensaver,bExit,1
                 if ($data[2] == 'screensaver' && $data[3] == 'bExit') {
                     $this->renderPage($panel['MQTT_PATH'], $config);
+                    return;
                 }
 
                 //event,sleepReached,cardEntities
                 if ($data[1] == 'sleepReached') {
                     $this->startScreensaver($panel['MQTT_PATH'], $config);
+                    return;
                 }
 
                 //event,buttonPress2,navigate.next,button
                 if ($data[2] == 'navigate.next' && $data[3] == 'button') {
                     $nextPage = $this->getNextPageName($config, $page['name']);
                     $this->renderPage($panel['MQTT_PATH'], $config, $nextPage);
+                    return;
                 }
                 if ($data[2] == 'navigate.prev' && $data[3] == 'button') {
                     if (defined('NSPANEL_USE_DEMO_CONFIG')) {
@@ -770,6 +783,7 @@ class nspanel extends module
                         $backPage = $this->getPrevPageName($config, $page['name']);
                         $this->renderPage($panel['MQTT_PATH'], $config, $backPage);
                     }
+                    return;
                 }
                 //event,buttonPress2,switch1,OnOff,0
                 if ($data[1] == 'buttonPress2' && $data[3] == 'OnOff') {
@@ -804,8 +818,9 @@ class nspanel extends module
                             }
                             if (isset($entity['navigateTo']) && isset($pageNumbers[$entity['navigateTo']])) {
                                 $current_page_num = $pageNumbers[$entity['navigateTo']];
+                                $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
+                                return;
                             }
-                            $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
                         }
                     }
                 }
@@ -830,6 +845,7 @@ class nspanel extends module
                             if (isset($entity['navigateTo']) && isset($pageNumbers[$entity['navigateTo']])) {
                                 $current_page_num = $pageNumbers[$entity['navigateTo']];
                                 $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
+                                return;
                             }
                         }
                     }
@@ -861,6 +877,7 @@ class nspanel extends module
                                 $current_page_num = $pageNumbers[$armAction['navigateTo']];
                             }
                             $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
+                            return;
                         }
                     }
                 }
@@ -898,6 +915,7 @@ class nspanel extends module
                 if ($data[1] == 'buttonPress2' && $data[3] == 'bExit') {
                     $page = $panel['CURRENT_PAGE'];
                     $this->renderPage($panel['MQTT_PATH'], $config, $page);
+                    return;
                 }
                 // {"CustomRecv":"event,pageOpenDetail,popupLight,itempopup2"}
                 if ($data[1] == 'pageOpenDetail' && $data[2] == 'popupLight') {
@@ -1061,6 +1079,8 @@ class nspanel extends module
                         }
                     }
                 }
+                
+                $this->updatePage($panel['MQTT_PATH'], $page);
             }
         }
 
@@ -1166,6 +1186,19 @@ class nspanel extends module
         }
         return $config;
     }
+    
+    function formatNowWithLocale($format, $locale) {
+        // Установка локали
+        setlocale(LC_TIME, $locale.'.UTF-8');
+
+        // Форматирование даты
+        $formattedDate = strftime($format);
+
+        // Сброс локали на дефолтную, чтобы не влиять на другие части приложения
+        setlocale(LC_TIME, '');
+
+    return $formattedDate;
+}
 
     function sendCurrentTime($device_id = 0)
     {
@@ -1177,7 +1210,10 @@ class nspanel extends module
         $total = count($panels);
         for ($i = 0; $i < $total; $i++) {
             // time
-            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . date('H:i'));
+            $time = date('H:i');
+            if ($config['format_time'])
+                $time = $this->formatNowWithLocale($config['format_time'],$config['locale']);
+            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . $time);
 
             $config = $this->getPanelConfig($panels[$i]['PANEL_CONFIG']);
 
@@ -1193,6 +1229,9 @@ class nspanel extends module
                 $date .= date('Y');
             }
 
+            if ($config['format_date'])
+                $date = $this->formatNowWithLocale($config['format_date'],$config['locale']);
+            
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
 
             // update brightness
