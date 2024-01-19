@@ -766,7 +766,10 @@ class nspanel extends module
 
                 //event,buttonPress2,screensaver,bExit,1
                 if ($data[2] == 'screensaver' && $data[3] == 'bExit') {
-                    $this->renderPage($panel['MQTT_PATH'], $config);
+                    if (isset($config['defaultPage']))
+                        if (isset($pageNumbers[$config['defaultPage']]))
+                            $current_page_num = $pageNumbers[$config['defaultPage']];
+                    $this->renderPage($panel['MQTT_PATH'], $config, $current_page_num);
                     return;
                 }
 
