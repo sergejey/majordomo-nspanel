@@ -675,6 +675,12 @@ class nspanel extends module
             }
         }
         $page = $config['pages'][$current_page_num];
+        
+        if (preg_match('/SENSOR$/', $topic) && isset($config['linkedTemperature'])){
+            //{"Time":"2024-01-19T06:29:11","ANALOG":{"Temperature1":27.0},"TempUnit":"C"}
+            $sensor = json_decode($msg, true);
+            sg($config['linkedTemperature'],$sensor["ANALOG"]["Temperature1"]);
+        }
 
         if (preg_match('/POWER1$/', $topic) && isset($config['power1']) && isset($config['power1']['linkedObject'])) {
             $methodOn = 'turnOn';
@@ -1113,7 +1119,63 @@ class nspanel extends module
 
     function api($params)
     {
+        if ($params['request'][0]=='panels') {
+            $panels=SQLSelect("SELECT * FROM `ns_panels`");
+            return $panels;
+        }
+        if ($params['request'][0]=='config') {
+            $id = $params['request'][1];
+            $table_name = "ns_panels";
+            $rec = SQLSelectOne("SELECT * FROM `$table_name` WHERE ID='$id'");
+            if ($rec){
+                
+              if ($_SERVER['REQUEST_METHOD']=='POST'){
+                
+                
+                $old_config = $this->getPanelConfig($rec['PANEL_CONFIG']);
+                
+                $config = file_get_contents('php://input');
+                $rec['PANEL_CONFIG'] = $config;
+                SQLUpdate($table_name, $rec);
+                
+                $config = $this->getPanelConfig($rec['PANEL_CONFIG']);
+                
+                //removeLinkedProperty
+                if (isset($old_config['power1']['linkedObject']) && isset($old_config['power1']['linkedProperty'])) {
+                    removeLinkedProperty($old_config['power1']['linkedObject'], $old_config['power1']['linkedProperty'], $this->name);
+                }
+                if (isset($old_config['power2']['linkedObject']) && isset($old_config['power2']['linkedProperty'])) {
+                    removeLinkedProperty($old_config['power2']['linkedObject'], $old_config['power2']['linkedProperty'], $this->name);
+                }
 
+                //addLinkedProperty
+                if (isset($config['power1']['linkedObject']) && isset($config['power1']['linkedProperty'])) {
+                    addLinkedProperty($config['power1']['linkedObject'], $config['power1']['linkedProperty'], $this->name);
+                }
+                if (isset($config['power2']['linkedObject']) && isset($config['power2']['linkedProperty'])) {
+                    addLinkedProperty($config['power2']['linkedObject'], $config['power2']['linkedProperty'], $this->name);
+                }
+
+                if (isset($config['decouple_buttons'])) {
+                    if ($config['decouple_buttons']) {
+                        //SetOption73 1
+                        $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',1);
+                    } else {
+                        //SetOption73 0
+                        $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',0);
+                    }
+                }
+
+                
+                return "ok";
+              }
+              else{
+                return $rec['PANEL_CONFIG'];
+              }
+            }
+
+            return "Not found panel";
+        }
         if ($_REQUEST['new_minute']) {
             $this->sendCurrentTime();
         }
