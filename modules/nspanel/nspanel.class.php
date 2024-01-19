@@ -675,6 +675,12 @@ class nspanel extends module
             }
         }
         $page = $config['pages'][$current_page_num];
+        
+        if (preg_match('/SENSOR$/', $topic) && isset($config['linkedTemperature'])){
+            //{"Time":"2024-01-19T06:29:11","ANALOG":{"Temperature1":27.0},"TempUnit":"C"}
+            $sensor = json_decode($msg, true);
+            sg($config['linkedTemperature'],$sensor["ANALOG"]["Temperature1"]);
+        }
 
         if (preg_match('/POWER1$/', $topic) && isset($config['power1']) && isset($config['power1']['linkedObject'])) {
             $methodOn = 'turnOn';
