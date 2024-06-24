@@ -139,7 +139,7 @@ class nspanel extends module
         $out['MQTT_USERNAME'] = $this->config['MQTT_USERNAME'];
         $out['MQTT_PASSWORD'] = $this->config['MQTT_PASSWORD'];
         $out['MQTT_AUTH'] = $this->config['MQTT_AUTH'];
-        $out['DEBUG_MODE'] = $this->config['DEBUG_MODE'];
+        $out['DEBUG_MODE'] = isset($this->config['DEBUG_MODE']) ? $this->config['DEBUG_MODE'] : false;
 
         if ($this->view_mode == 'update_settings') {
             $this->config['MQTT_HOST'] = gr('mqtt_host', 'trim');
@@ -1122,70 +1122,72 @@ class nspanel extends module
 
     function api($params)
     {
-        if ($params['request'][0]=='panels') {
-            $panels=SQLSelect("SELECT * FROM `ns_panels`");
-            return $panels;
-        }
-        if ($params['request'][0]=='config') {
-            $id = $params['request'][1];
-            $table_name = "ns_panels";
-            $rec = SQLSelectOne("SELECT * FROM `$table_name` WHERE ID='$id'");
-            if ($rec){
-                
-              if ($_SERVER['REQUEST_METHOD']=='POST'){
-                
-                
-                $old_config = $this->getPanelConfig($rec['PANEL_CONFIG']);
-                
-                $config = file_get_contents('php://input');
-                $rec['PANEL_CONFIG'] = $config;
-                SQLUpdate($table_name, $rec);
-                
-                $config = $this->getPanelConfig($rec['PANEL_CONFIG']);
-                
-                //removeLinkedProperty
-                if (isset($old_config['power1']['linkedObject']) && isset($old_config['power1']['linkedProperty'])) {
-                    removeLinkedProperty($old_config['power1']['linkedObject'], $old_config['power1']['linkedProperty'], $this->name);
-                }
-                if (isset($old_config['power2']['linkedObject']) && isset($old_config['power2']['linkedProperty'])) {
-                    removeLinkedProperty($old_config['power2']['linkedObject'], $old_config['power2']['linkedProperty'], $this->name);
-                }
-
-                //addLinkedProperty
-                if (isset($config['power1']['linkedObject']) && isset($config['power1']['linkedProperty'])) {
-                    addLinkedProperty($config['power1']['linkedObject'], $config['power1']['linkedProperty'], $this->name);
-                }
-                if (isset($config['power2']['linkedObject']) && isset($config['power2']['linkedProperty'])) {
-                    addLinkedProperty($config['power2']['linkedObject'], $config['power2']['linkedProperty'], $this->name);
-                }
-
-                if (isset($config['decouple_buttons'])) {
-                    if ($config['decouple_buttons']) {
-                        //SetOption73 1
-                        $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',1);
-                    } else {
-                        //SetOption73 0
-                        $this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',0);
-                    }
-                }
-
-                
-                return "ok";
-              }
-              else{
-                return $rec['PANEL_CONFIG'];
-              }
-            }
-
-            return "Not found panel";
-        }
-        if ($_REQUEST['new_minute']) {
+		if (isset($params['request'][0])){
+			if ($params['request'][0]=='panels') {
+				$panels=SQLSelect("SELECT * FROM `ns_panels`");
+				return $panels;
+			}
+			if ($params['request'][0]=='config') {
+				$id = $params['request'][1];
+				$table_name = "ns_panels";
+				$rec = SQLSelectOne("SELECT * FROM `$table_name` WHERE ID='$id'");
+				if ($rec){
+					
+				if ($_SERVER['REQUEST_METHOD']=='POST'){
+					
+					
+					$old_config = $this->getPanelConfig($rec['PANEL_CONFIG']);
+					
+					$config = file_get_contents('php://input');
+					$rec['PANEL_CONFIG'] = $config;
+					SQLUpdate($table_name, $rec);
+					
+					$config = $this->getPanelConfig($rec['PANEL_CONFIG']);
+					
+					//removeLinkedProperty
+					if (isset($old_config['power1']['linkedObject']) && isset($old_config['power1']['linkedProperty'])) {
+						removeLinkedProperty($old_config['power1']['linkedObject'], $old_config['power1']['linkedProperty'], $this->name);
+					}
+					if (isset($old_config['power2']['linkedObject']) && isset($old_config['power2']['linkedProperty'])) {
+						removeLinkedProperty($old_config['power2']['linkedObject'], $old_config['power2']['linkedProperty'], $this->name);
+					}
+	
+					//addLinkedProperty
+					if (isset($config['power1']['linkedObject']) && isset($config['power1']['linkedProperty'])) {
+						addLinkedProperty($config['power1']['linkedObject'], $config['power1']['linkedProperty'], $this->name);
+					}
+					if (isset($config['power2']['linkedObject']) && isset($config['power2']['linkedProperty'])) {
+						addLinkedProperty($config['power2']['linkedObject'], $config['power2']['linkedProperty'], $this->name);
+					}
+	
+					if (isset($config['decouple_buttons'])) {
+						if ($config['decouple_buttons']) {
+							//SetOption73 1
+							$this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',1);
+						} else {
+							//SetOption73 0
+							$this->sendMQTTCommand($rec['MQTT_PATH'].'/cmnd/SetOption73',0);
+						}
+					}
+	
+					
+					return "ok";
+				}
+				else{
+					return $rec['PANEL_CONFIG'];
+				}
+				}
+	
+				return "Not found panel";
+			}
+		}
+        if (isset($_REQUEST['new_minute'])) {
             $this->sendCurrentTime();
         }
-        if ($_REQUEST['topic']) {
+        if (isset($_REQUEST['topic'])) {
             $this->processMessage($_REQUEST['topic'], $_REQUEST['msg']);
         }
-        if ($params['publish']) {
+        if (isset($params['publish'])) {
             $this->mqttPublish($params['publish'], $params['msg']);
         }
     }
@@ -1203,7 +1205,7 @@ class nspanel extends module
     function sendMQTTCommand($topic, $command)
     {
         //DebMes("Sending custom command to $topic: " . $command, 'nspanel');
-        $this->getConfig();
+       /*$this->getConfig();
         include_once(ROOT . "3rdparty/phpmqtt/phpMQTT.php");
         $client_name = "NSPanel module";
         if ($this->config['MQTT_AUTH']) {
@@ -1225,7 +1227,8 @@ class nspanel extends module
             return 0;
         }
         $mqtt_client->publish($topic, $command, 0, 0);
-        $mqtt_client->close();
+        $mqtt_client->close();*/
+		addToOperationsQueue("nspanel_queue", $topic, $command);
 
     }
 
@@ -1276,7 +1279,7 @@ class nspanel extends module
         for ($i = 0; $i < $total; $i++) {
             // time
             $time = date('H:i');
-            if ($config['format_time'])
+            if (isset($config['format_time']))
                 $time = $this->formatNowWithLocale($config['format_time'],$config['locale']);
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'time~' . $time);
 
@@ -1294,7 +1297,7 @@ class nspanel extends module
                 $date .= date('Y');
             }
 
-            if ($config['format_date'])
+            if (isset($config['format_date']))
                 $date = $this->formatNowWithLocale($config['format_date'],$config['locale']);
             
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
