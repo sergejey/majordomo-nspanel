@@ -234,7 +234,15 @@ class nspanel extends module
         if (isset($panel_config['screensaver']['timeout'])) {
             $this->sendCustomCommand($panel_path, 'timeout~' . (int)processTitle($panel_config['screensaver']['timeout']));
         }
-        if (isset($panel_config['screensaver']['brightness'])) {
+        if(isset($config['screensaver']['sleepBrightness'])) {
+            if(timeBetween(processTitle($config['screensaver']['sleepBrightness']['time1']), processTitle($config['screensaver']['sleepBrightness']['time2'])))
+                $brightness = $config['screensaver']['sleepBrightness']['value1'];
+            else
+                $brightness = $config['screensaver']['sleepBrightness']['value2'];
+
+            $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'dimmode~' . (int)processTitle($brightness) . '~100');
+        }
+        else if (isset($panel_config['screensaver']['brightness'])) {
             $this->sendCustomCommand($panel_path, 'dimmode~' . (int)processTitle($panel_config['screensaver']['brightness']) . '~100');
         }
         $this->updateWeather($panel_path, $panel_config);
@@ -1228,7 +1236,7 @@ class nspanel extends module
         }
         $mqtt_client->publish($topic, $command, 0, 0);
         $mqtt_client->close();*/
-		addToOperationsQueue("nspanel_queue", $topic, $command);
+        addToOperationsQueue("nspanel_queue", $topic, $command);
 
     }
 
@@ -1303,7 +1311,15 @@ class nspanel extends module
             $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'date~' . $date);
 
             // update brightness
-            if (isset($config['screensaver']['brightness'])) {
+            if(isset($config['screensaver']['sleepBrightness'])) {
+                if(timeBetween(processTitle($config['screensaver']['sleepBrightness']['time1']), processTitle($config['screensaver']['sleepBrightness']['time2'])))
+                    $brightness = $config['screensaver']['sleepBrightness']['value1'];
+                else
+                    $brightness = $config['screensaver']['sleepBrightness']['value2'];
+
+                $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'dimmode~' . (int)processTitle($brightness) . '~100');
+            }
+            else if (isset($config['screensaver']['brightness'])) {
                 $this->sendCustomCommand($panels[$i]['MQTT_PATH'], 'dimmode~' . (int)processTitle($config['screensaver']['brightness']) . '~100');
             }
 
