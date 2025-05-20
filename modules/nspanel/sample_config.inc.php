@@ -42,7 +42,13 @@ $config = array(
     ),
     'screensaver' => array(
         'timeout' => 60, // 0 to disable
-        'brightness' => 10, // screensaver brightness
+        'brightness' => 10, // screensaver brightness OR
+        'sleepBrightness' => array( // 2 period screensaver brightness
+            'time1' => '07:00', // can use '%ThisComputer.SunRiseTime%'
+            'value1' => 60,
+            'time2' => '21:00', // can use '%ThisComputer.SunSetTime%'
+            'value2' => 30,
+        ),
         'type' => "screensaver2", // screensaver, screensaver2
         'screenItems' => array(
             array(
